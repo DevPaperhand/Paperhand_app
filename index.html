@@ -1560,7 +1560,13 @@ function decorate(v, price, claimable){
   const highWater = spot != null && spot > v.highWater ? spot : v.highWater;
   const pct = pctOf(v.low, v.high, highWater) ?? 0;
   const unlocked = v.deposited * BigInt(Math.round(pct * 1e6)) / BigInt(100e6);
-  const claimableAmt = claimable !== undefined ? claimable : (unlocked > v.withdrawn ? unlocked - v.withdrawn : 0n);
+  /* The contract's claimable() is a view, so it answers from the last high water
+     mark anyone wrote on chain. claim() raises that mark itself before paying,
+     so what you can actually take is the larger of the two: what is recorded,
+     and what today's price has released. */
+  const predicted = unlocked > v.withdrawn ? unlocked - v.withdrawn : 0n;
+  const claimableAmt = claimable === undefined ? predicted
+    : (claimable > predicted ? claimable : predicted);
   const out = { ...v, price: spot, highWater, pct, claimable: claimableAmt };
   out.art = vaultCard({ id: v.id, symbol: v.symbol, dec: v.dec, deposited: v.deposited,
     withdrawn: v.withdrawn, low: v.low, high: v.high, highWater,
