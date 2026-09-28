@@ -1,0 +1,2488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Paperhand · test app</title>
+<meta name="description" content="Paperhand test app. An agent on Comfy that locks tokens in NFT vaults behind a price range, on 0G." />
+<link rel="icon" href="favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22c%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2226%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3Cg%20clip-path%3D%22url%28%23c%29%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22%2316132B%22%2F%3E%3Cpath%20d%3D%22M0%2064%20L50%2052%20L100%2064%20V100%20H0%20Z%22%20fill%3D%22%235A3FD0%22%2F%3E%3Cpath%20d%3D%22M0%2064%20L50%2052%20L100%2064%20L100%2068%20L50%2056%20L0%2068%20Z%22%20fill%3D%22%238C73F0%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<!-- Optional. Anything it sets overrides the defaults below, so an address change
+     is a two line edit in a 1 kB file instead of a rebuild. Missing is fine. -->
+<script src="config.js" onerror="void 0"></script>
+<style>
+:root{
+  --paper:#F6F4FA;
+  --panel:#FFFFFF;
+  --ink:#16132B;
+  --muted:#726E86;
+  --rule:#E4E1EE;
+  --soft:#EFECF6;
+  --free:#5A3FD0;
+  --free-soft:#EEEAFC;
+  --alert:#C2302A;
+  --alert-soft:#FBECEA;
+  --r:20px;
+  --rs:12px;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);overflow:hidden;
+  font-family:"Archivo",ui-sans-serif,system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html[lang^="zh"] body{font-family:"Archivo","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",ui-sans-serif,sans-serif}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.03em;line-height:1.08}
+h1{font-size:clamp(27px,4.6vw,54px)}
+h2{font-size:17px;letter-spacing:-.01em}
+h3{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+html[lang^="zh"] h1,html[lang^="zh"] h2,html[lang^="zh"] h3{letter-spacing:0}
+html[lang^="zh"] h1{font-size:clamp(23px,3.8vw,44px)}
+p{margin:0}
+button{font:inherit;font-variant-numeric:tabular-nums;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font:inherit;font-variant-numeric:tabular-nums;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:4px}
+
+/* --------------------------------------------------------------- arrival
+   A fill sweeps up the screen, holds for a beat, then keeps going and takes
+   itself off the top. Same waterline as the mark.                          */
+.ph-enter{position:fixed;inset:0;z-index:999;pointer-events:none;overflow:hidden}
+.ph-wave{position:absolute;left:-2vw;width:104vw;height:140vh;top:0;
+  transform:translateY(100%);animation:phSweep 1.25s var(--ease) both}
+.ph-wave .cap{position:absolute;left:0;right:0;bottom:100%;height:9vw;min-height:60px}
+.ph-wave .body{position:absolute;inset:0;background:var(--free)}
+.ph-enter .word{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--paper);
+  font-size:clamp(28px,6vw,40px);font-weight:700;letter-spacing:-.035em;opacity:0;animation:phWord 1.25s var(--ease) both}
+@keyframes phSweep{
+  0%{transform:translateY(100%)}
+  34%{transform:translateY(0)}
+  52%{transform:translateY(0)}
+  100%{transform:translateY(-140%)}
+}
+@keyframes phWord{0%,22%{opacity:0}38%,52%{opacity:1}72%,100%{opacity:0}}
+
+/* ------------------------------------------------------------ backdrop */
+.orbs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.orb{position:absolute;border-radius:50%;filter:blur(64px);opacity:.5}
+.o1{width:380px;height:380px;background:#D4CBF5;left:-6%;top:12%;animation:drift1 46s ease-in-out infinite}
+.o2{width:320px;height:320px;background:#F3DFC6;right:-4%;top:6%;animation:drift2 58s ease-in-out infinite}
+.o3{width:300px;height:300px;background:#E2DCF2;right:8%;bottom:-8%;animation:drift3 52s ease-in-out infinite}
+.o4{width:240px;height:240px;background:#F1E6F6;left:16%;bottom:-6%;animation:drift1 64s ease-in-out infinite reverse}
+@keyframes drift1{50%{transform:translate3d(60px,40px,0) scale(1.12)}}
+@keyframes drift2{50%{transform:translate3d(-50px,50px,0) scale(1.08)}}
+@keyframes drift3{50%{transform:translate3d(-40px,-40px,0) scale(1.14)}}
+
+/* ---------------------------------------------------------------- shell */
+.app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+nav{display:flex;align-items:center;gap:12px;padding:0 20px;height:64px;flex:none}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.03em;font-size:18px;flex:none;color:inherit;text-decoration:none}
+.glyph{width:18px;height:18px;display:block;flex:none;overflow:visible}
+.glyph{transition:transform .18s var(--ease)}
+.glyph .fill{transition:transform .6s var(--ease)}
+.logo:hover .glyph .fill{transform:translateY(-12px)}
+.logo:active .glyph{transform:scale(.9)}
+.logo.splash .glyph .fill{animation:splash .95s var(--ease)}
+@keyframes splash{0%{transform:translateY(0)}38%{transform:translateY(-62px)}58%{transform:translateY(-55px)}100%{transform:translateY(0)}}
+.tabs{display:flex;gap:2px;margin-left:10px;overflow-x:auto;scrollbar-width:none;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{padding:8px 13px;border-radius:100px;font-size:14.5px;color:var(--muted);white-space:nowrap;
+  transition:color .16s,background .16s,transform .12s var(--ease)}
+.tabs button:hover{color:var(--ink)}
+.tabs button:active{transform:scale(.96)}
+.tabs button[aria-selected="true"]{background:var(--soft);color:var(--ink);font-weight:600}
+nav .grow{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--rule);background:var(--panel);
+  border-radius:100px;padding:7px 13px;font-size:13px;color:var(--muted);transition:border-color .16s,color .16s,background .16s}
+.pill.on{border-color:var(--free);color:var(--free);background:var(--free-soft)}
+.pill.on .dot{animation:blip 2.6s ease-in-out infinite}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+@keyframes blip{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.asset .links{display:flex;gap:9px;font-size:12px;margin-top:1px}
+.asset .links a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--rule);transition:color .16s,border-color .16s}
+.asset .links a:hover{color:var(--ink);border-color:var(--ink)}
+td .sub{font-size:12px;color:var(--muted);margin-top:1px}
+.tag.warn{background:#FBF1E6;color:#8A5A1B}
+.buy{display:inline-block;border:1px solid var(--rule);border-radius:100px;padding:6px 14px;font-size:13px;
+  font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap;
+  transition:transform .14s var(--ease),border-color .16s,background .16s}
+.buy:hover{transform:translateY(-1px);border-color:var(--ink);background:var(--soft)}
+/* the status pill: centred on its own line box, violet, alive */
+.chip{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px;flex:none;
+  height:30px;padding:0 13px 0 11px;line-height:1;white-space:nowrap;
+  font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--free);
+  background:linear-gradient(180deg,#F4F1FD 0%,#E8E2FA 100%);
+  border:1px solid #D6CDF4;border-radius:100px;
+  box-shadow:inset 0 1px 0 #FFFFFF,0 6px 16px -10px rgba(90,63,208,.55);
+  animation:chipIn .7s var(--ease) .25s both}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--free);
+  animation:ping 2.2s ease-out infinite}
+.chip::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.75) 50%,transparent 70%);
+  transform:translateX(-130%);animation:sheen 5s ease-in-out 1.4s infinite}
+@keyframes chipIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(90,63,208,.5)}70%{box-shadow:0 0 0 7px rgba(90,63,208,0)}100%{box-shadow:0 0 0 0 rgba(90,63,208,0)}}
+@keyframes sheen{0%,62%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
+@media (max-width:420px){ .chip{display:none} }
+.lang{display:inline-flex;border:1px solid var(--rule);border-radius:100px;background:var(--panel);overflow:hidden}
+.lang button{padding:7px 11px;font-size:13px;color:var(--muted);line-height:1.2;transition:background .16s,color .16s}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+.btn{position:relative;background:var(--ink);color:var(--paper);border-radius:100px;padding:10px 18px;
+  font-weight:600;font-size:14px;overflow:hidden;
+  transition:transform .14s var(--ease),box-shadow .2s var(--ease),opacity .14s,background .16s,border-color .16s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px -10px rgba(22,19,43,.55)}
+.btn:active{transform:translateY(0) scale(.98);box-shadow:none}
+.btn:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--rule)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn.danger{background:var(--panel);color:var(--alert);border:1px solid var(--rule)}
+.btn.danger:hover{background:var(--alert-soft);border-color:var(--alert)}
+.btn.sm{padding:8px 14px;font-size:13px}
+.btn.block{display:block;width:100%;padding:15px;font-size:16px;border-radius:var(--rs)}
+.btn .ink{position:absolute;border-radius:50%;background:currentColor;opacity:.22;transform:scale(0);pointer-events:none;
+  animation:ripple .55s var(--ease) forwards}
+@keyframes ripple{to{transform:scale(2.6);opacity:0}}
+
+/* ------------------------------------------------------------ test bar
+   One line under the nav that says what this page is: a rehearsal. Nothing
+   on it touches the chain, and the way back to a clean slate is right there. */
+.testbar{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  margin:0 auto 6px;padding:7px 8px 7px 14px;border-radius:100px;max-width:calc(100% - 24px);
+  background:var(--panel);border:1px dashed #CFC6F2;font-size:13px;color:var(--muted)}
+.testbar b{color:var(--free);font-weight:700}
+.testbar .soonpill{font-size:12px;font-weight:600;color:var(--ink);background:var(--soft);border-radius:100px;padding:3px 10px}
+.testbar button{font-size:13px;font-weight:600;color:var(--ink);padding:4px 10px;border-radius:100px;transition:background .16s}
+.testbar button:hover{background:var(--soft)}
+@media (max-width:620px){ .testbar .soonpill{display:none} }
+.guide{display:grid;gap:12px;padding:4px 2px 8px}
+.guide ol{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:g}
+.guide li{counter-increment:g;display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start;
+  background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:14px 16px}
+.guide li::before{content:counter(g);width:26px;height:26px;border-radius:9px;background:var(--soft);color:var(--muted);
+  display:grid;place-items:center;font-size:13px;font-weight:600}
+.guide li b{display:block;font-size:14.5px;margin-bottom:3px}
+.guide li p{color:var(--muted);font-size:13.5px;max-width:64ch}
+.guide li .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.guide .chain{font-size:12.5px;color:var(--muted);margin-top:8px}
+.guide .chain code{font-family:inherit;font-weight:600;color:var(--ink)}
+.guide .soon{background:var(--free-soft);border:1px solid #D9D1F4;border-radius:14px;padding:14px 16px}
+.guide .soon b{display:block;font-size:14.5px;margin-bottom:4px;color:var(--free)}
+.guide .soon p{color:#4A3F7A;font-size:13.5px;max-width:68ch}
+.btn.dim{opacity:.4;pointer-events:none}
+
+/* ----------------------------------------------------------------- main */
+main{flex:1;min-height:0;display:grid;grid-template-rows:1fr auto 1fr;justify-items:center;align-items:center;
+  padding:0 clamp(12px,3vw,28px) 20px;width:100%}
+.headline{grid-row:1;align-self:end;text-align:center;width:min(940px,94vw);padding-bottom:clamp(16px,2.6vh,30px);
+  animation:rise .5s var(--ease) both}
+.headline p{margin:12px auto 0;color:var(--muted);font-size:clamp(15px,1.5vw,18px);max-width:58ch}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+.card{grid-row:2;width:100%;max-width:480px;background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);
+  box-shadow:0 1px 2px rgba(22,19,43,.04),0 18px 44px -28px rgba(22,19,43,.3);
+  display:flex;flex-direction:column;max-height:calc(100dvh - 148px);overflow:hidden;
+  transition:max-width .24s var(--ease)}
+.card.wide{max-width:820px}
+.card .pad{padding:18px}
+.card .scroll{overflow:auto;min-height:0;overscroll-behavior:contain}
+.card .top{display:flex;align-items:flex-start;gap:12px;padding:18px 18px 15px;
+  border-bottom:1px solid var(--rule);
+  background:linear-gradient(180deg,var(--panel) 0%,rgba(239,236,246,.6) 100%)}
+.card .top .ttl{flex:1;min-width:0}
+.card .top h2{margin:0}
+.card .top .sub{margin-top:4px;font-size:12.5px;color:var(--muted);line-height:1.45}
+.card .top .pill{margin-top:2px}
+.view{display:none}
+.view.on{display:flex;flex-direction:column;min-height:0;animation:fade .22s var(--ease) both}
+@keyframes fade{from{opacity:0}}
+
+/* ----------------------------------------------------------------- lock */
+.field{background:var(--soft);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px;transition:box-shadow .16s}
+.field:focus-within{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:2px}
+.field .line{display:flex;align-items:center;gap:10px}
+.field input{border:none;background:none;padding:0;width:100%;min-width:0;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.field input:focus{outline:none}
+.field input::placeholder{color:#C4C0D2}
+.field .sub{font-size:12.5px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;gap:10px}
+.field .sub .bal{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%;
+  font-variant-numeric:tabular-nums;cursor:pointer}
+.field .sub .bal b{color:var(--ink);font-weight:600}
+.pcts{display:flex;gap:14px;margin-top:6px}
+.pcts button{padding:0;font-size:12px;color:var(--muted);background:none;border:0;
+  transition:color .14s}
+.pcts button:hover{color:var(--ink)}
+.pcts button[aria-pressed="true"]{color:var(--free);font-weight:600}
+.picker{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--rule);border-radius:100px;
+  padding:6px 12px 6px 7px;font-weight:600;font-size:14px;flex:none;transition:border-color .16s,transform .14s var(--ease)}
+.picker:hover{border-color:var(--ink);transform:translateY(-1px)}
+.picker select{border:none;background:none;font-weight:600;cursor:pointer;-webkit-appearance:none;appearance:none}
+.picker select:focus{outline:none}
+.picker #token-mark{display:block;width:26px;height:26px}
+.picker #token-mark svg,.picker #token-mark img{display:block;width:26px;height:26px;border-radius:8px;
+  outline:1px solid rgba(22,19,43,.09);outline-offset:-1px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.duo .field{margin-bottom:8px}
+.duo input{font-size:19px}
+.bar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--free);width:0%;transition:width .45s var(--ease)}
+.barline{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.barline b{color:var(--ink);font-weight:600}
+.summary{padding:12px 14px;border:1px solid var(--rule);border-radius:var(--rs);margin-bottom:10px}
+.sumrow{display:flex;gap:14px;align-items:center}
+.sumbody{flex:1;min-width:0}
+.preview{width:74px;flex:none;border-radius:8px;overflow:hidden;line-height:0;padding:0;
+  box-shadow:0 8px 18px -14px rgba(22,19,43,.6);transition:transform .25s var(--ease),box-shadow .25s var(--ease)}
+.preview:hover{transform:translateY(-2px) rotate(-1.5deg);box-shadow:0 14px 26px -16px rgba(22,19,43,.6)}
+.preview svg{display:block;width:100%;height:auto}
+.zoom{position:fixed;inset:0;z-index:90;background:rgba(22,19,43,.45);display:grid;place-items:center;padding:24px;
+  animation:fade .2s var(--ease) both;cursor:zoom-out}
+.zoom.wide{cursor:auto}
+.pnl{width:min(760px,92vw)}
+.pnl .shot{border-radius:14px;overflow:hidden;line-height:0;box-shadow:0 30px 60px -30px rgba(0,0,0,.7)}
+.pnl .shot svg{display:block;width:100%;height:auto}
+.pnl .acts{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.pnl .acts .btn{text-decoration:none}
+.zoom .inner{width:min(300px,78vw);border-radius:16px;overflow:hidden;line-height:0;
+  box-shadow:0 30px 60px -30px rgba(0,0,0,.7);animation:pop .3s var(--ease) both}
+.zoom .inner svg{display:block;width:100%;height:auto}
+.zoom p{margin-top:14px;color:#fff;font-size:13px;text-align:center;opacity:.85}
+.ask{position:fixed;inset:0;z-index:95;background:rgba(22,19,43,.42);display:grid;place-items:center;padding:22px;
+  animation:fade .18s var(--ease) both;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.ask.out{animation:fade .16s var(--ease) reverse both}
+.ask .sheet{width:min(400px,100%);background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);
+  padding:22px 22px 18px;box-shadow:0 34px 60px -30px rgba(22,19,43,.55);animation:pop .22s var(--ease) both}
+.ask h3{font-size:17px;margin-bottom:8px}
+.ask p{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:46ch}
+.ask .row{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
+.ask .btn{min-width:104px;justify-content:center}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted);padding:3px 0}
+.kv b{color:var(--ink);font-weight:600}
+
+/* ------------------------------------------------------------ portfolio */
+.nfts{display:grid;grid-template-columns:repeat(auto-fill,minmax(156px,1fr));gap:12px;padding:16px 18px 18px}
+.nft{padding:8px;border:1px solid var(--rule);border-radius:var(--rs);background:var(--panel);text-align:left;
+  transition:transform .2s var(--ease),border-color .2s,box-shadow .2s var(--ease)}
+.nft:hover{transform:translateY(-3px);border-color:var(--ink);box-shadow:0 16px 30px -22px rgba(22,19,43,.5)}
+.nft:active{transform:translateY(-1px) scale(.99)}
+.nft .art{display:block;width:100%;border-radius:9px;overflow:hidden;background:var(--soft);line-height:0}
+.nft .art svg{display:block;width:100%;height:auto}
+.nft .cap{display:flex;justify-content:space-between;gap:6px;align-items:baseline;padding:9px 3px 1px;font-size:13px}
+.nft .cap b{font-weight:600}
+.nft .cap span{color:var(--free);font-weight:600}
+.empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:14px}
+.detail{display:grid;grid-template-columns:210px 1fr;gap:20px;padding:16px 18px 18px}
+.detail .art.big{width:100%;border-radius:12px;background:var(--soft);overflow:hidden;line-height:0;
+  box-shadow:0 20px 40px -26px rgba(22,19,43,.5);animation:pop .3s var(--ease) both}
+.detail .art.big svg{display:block;width:100%;height:auto}
+@keyframes pop{from{opacity:0;transform:scale(.96)}}
+.back{font-size:13px;color:var(--muted);padding:2px 0;transition:color .16s,transform .16s var(--ease)}
+.back:hover{color:var(--ink);transform:translateX(-2px)}
+.rows .kv{padding:7px 0;border-top:1px solid var(--rule);font-size:13.5px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:10px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 0}
+.acts .btn{padding:11px 16px}
+.acts .claim{flex:1 1 180px;justify-content:center;flex-direction:column;gap:2px;font-size:14.5px;line-height:1.15}
+.acts .claim .l2{font-size:11.5px;font-weight:500;opacity:.72}
+.acts .claim.all{background:var(--free);border-color:var(--free)}
+.acts .claim:not(:disabled){box-shadow:0 10px 22px -14px rgba(22,19,43,.75)}
+.hint.top{margin:9px 0 14px}
+.detail .side{display:flex;flex-direction:column;gap:12px}
+.upside{padding:14px 15px 13px;border-radius:var(--rs);border:1px solid var(--rule);
+  background:linear-gradient(180deg,var(--panel),var(--soft))}
+.upside .head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.upside .big{font-size:28px;font-weight:700;letter-spacing:-.025em;color:var(--free);
+  font-variant-numeric:tabular-nums;line-height:1}
+.upside .to{font-size:12.5px;color:var(--muted)}
+.upside .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px;
+  border-top:1px solid var(--rule)}
+.upside .kv span{color:var(--muted)}
+.upside .kv b{font-weight:600;font-variant-numeric:tabular-nums}
+.upside .kv b.up{color:var(--free)}
+/* the card button breathes, so it reads as the one thing worth pressing here */
+.pnlbtn{position:relative;overflow:hidden;width:100%;justify-content:center;margin-top:11px;
+  background:var(--free);color:var(--paper);border-color:var(--free);
+  box-shadow:0 8px 18px -12px rgba(90,63,208,.8);animation:pnlGlow 2.8s ease-in-out infinite}
+.pnlbtn span{position:relative;z-index:1}
+.pnlbtn::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);
+  transform:translateX(-130%);animation:sheen 3.6s ease-in-out 0.6s infinite}
+.pnlbtn:hover{transform:translateY(-1px);box-shadow:0 12px 22px -12px rgba(90,63,208,.9)}
+@keyframes pnlGlow{0%,100%{box-shadow:0 8px 18px -12px rgba(90,63,208,.7)}50%{box-shadow:0 8px 24px -8px rgba(90,63,208,.95)}}
+/* the resale offer runs along the whole foot of the card */
+.sellbar{display:flex;align-items:center;gap:16px;margin:0 18px 18px;padding:14px 16px;
+  border-radius:var(--rs);background:var(--free-soft)}
+.sellbar .txt{flex:1;min-width:0}
+.sellbar b{display:block;font-size:13.5px;color:var(--free)}
+.sellbar span{display:block;font-size:12.5px;color:#4A3F7A;margin-top:2px}
+.sellbar .btn{flex:none;text-decoration:none;background:var(--free);border-color:var(--free);color:var(--paper)}
+@media (max-width:620px){ .sellbar{flex-direction:column;align-items:stretch} .sellbar .btn{justify-content:center} }
+.sell{margin-top:12px;padding:12px 14px;border-radius:var(--rs);background:var(--free-soft)}
+.sell b{font-size:13.5px;color:var(--free)}
+.sell p{font-size:12.5px;color:#4A3F7A;margin:5px 0 10px}
+.sell .btn{text-decoration:none;display:inline-block}
+.send{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+.send input{width:100%;border:1px solid var(--rule);border-radius:var(--rs);padding:11px 12px;background:var(--panel)}
+.send input:focus{outline:none;border-color:var(--ink)}
+
+/* --------------------------------------------------------------- assets */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:12.5px;padding:6px 14px 10px;position:sticky;top:0;background:var(--panel);z-index:1}
+td{padding:11px 14px;border-top:1px solid var(--rule);vertical-align:middle}
+td.num,th.num{text-align:right}
+tbody tr{transition:background .16s}
+tbody tr:hover{background:var(--soft)}
+.asset{display:flex;align-items:center;gap:11px}
+.asset .tile{width:34px;height:34px;display:block;flex:none;transition:transform .35s var(--ease)}
+.asset .tile svg,.asset .tile img{display:block;width:34px;height:34px;border-radius:9px;
+  outline:1px solid rgba(22,19,43,.09);outline-offset:-1px}
+tbody tr:hover .asset .tile{transform:translateY(-2px) rotate(-3deg)}
+.tag{font-size:12px;padding:3px 9px;border-radius:100px;background:var(--free-soft);color:var(--free);font-weight:600;white-space:nowrap}
+.tag.off{background:var(--soft);color:var(--muted)}
+.nudge{display:inline-flex;gap:4px;align-items:center}
+.nudge button{border:1px solid var(--rule);border-radius:8px;width:28px;height:28px;font-size:13px;color:var(--muted);
+  line-height:1;transition:border-color .16s,color .16s,transform .12s var(--ease)}
+.nudge button:hover{border-color:var(--ink);color:var(--ink)}
+.nudge button:active{transform:scale(.9)}
+.nudge input{width:86px;text-align:right;border:1px solid var(--rule);border-radius:8px;padding:5px 8px;background:var(--panel)}
+.nudge input:focus{outline:none;border-color:var(--ink)}
+.diag{margin:14px 18px 6px;border:1px solid var(--rule);border-radius:var(--rs);padding:12px 14px;font-size:13px}
+.diag.ok{background:var(--free-soft);border-color:#D9D1F4}
+.diag.bad{background:var(--alert-soft);border-color:#F0D6D3}
+.diag.warn{background:#FBF6EC;border-color:#EADFC8}
+.diag.warn .line b{color:#8A5A1B}
+.diag .line{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.diag .line b{font-weight:600}
+.diag.ok .line b{color:var(--free)}
+.diag.bad .line b{color:var(--alert)}
+.diag .line span{color:var(--muted);word-break:break-all}
+.diag .rpcrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.diag .rpcrow input{flex:1;min-width:200px;border:1px solid var(--rule);border-radius:var(--rs);padding:8px 10px;background:var(--panel);font-size:13px}
+.diag .rpcrow input:focus{outline:none;border-color:var(--ink)}
+.diag .why{margin-top:9px;color:var(--muted);line-height:1.5}
+
+/* ---------------------------------------------------------------- stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border-bottom:1px solid var(--rule)}
+.stat{background:var(--panel);padding:16px 18px}
+.stat span{display:block;font-size:12.5px;color:var(--muted)}
+.stat b{display:block;font-size:21px;font-weight:700;letter-spacing:-.02em;margin-top:3px}
+.stat.tba b{color:var(--muted)}
+.block{padding:16px 18px}
+.addrs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.addr{display:block;border:1px solid var(--rule);border-radius:var(--rs);padding:11px 13px;text-decoration:none;color:inherit;
+  transition:border-color .16s,transform .14s var(--ease),box-shadow .2s var(--ease)}
+a.addr:hover{border-color:var(--ink);transform:translateY(-1px);box-shadow:0 10px 20px -16px rgba(22,19,43,.5)}
+.addr b{display:block;font-size:13.5px;font-weight:600}
+.addr span{display:block;font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.addr.soon{opacity:.55}
+.sources{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sources div{border:1px solid var(--rule);border-radius:var(--rs);padding:12px 14px}
+.sources b{display:block;font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--free)}
+.sources span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px}
+@media (max-width:760px){ .sources{grid-template-columns:1fr} }
+table.mini td,table.mini th{padding-top:9px;padding-bottom:9px}
+.market{background:var(--free-soft);margin:0 18px 6px;border-radius:var(--rs);padding:16px 18px!important}
+.market p{color:#4A3F7A;font-size:13.5px;max-width:68ch;margin-bottom:10px}
+.market .btn{display:inline-block;text-decoration:none;margin-top:4px}
+@media (max-width:760px){ .addrs{grid-template-columns:1fr} }
+.block h3{margin-bottom:10px}
+.note{font-size:12.5px;color:var(--muted);padding:0 18px 18px;max-width:70ch}
+
+/* ----------------------------------------------------------------- docs */
+.docs{padding:16px 18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px 34px}
+.docs article p{color:var(--muted);font-size:13.5px;margin-top:5px;max-width:52ch}
+.docs article.wide{grid-column:1/-1;background:var(--soft);border-radius:var(--rs);padding:14px 16px}
+.linkrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.docs article.lead{background:var(--ink);color:var(--paper)}
+.docs article.lead p{color:#CFCBE0;font-size:14.5px;max-width:70ch}
+.docs article.mkt{background:var(--free-soft)}
+.docs article.mkt p{color:#4A3F7A;margin-bottom:12px}
+.docs article.mkt .btn{text-decoration:none;display:inline-block}
+.docs article.faqs{background:none;padding:4px 0 0}
+.faqs details{border-top:1px solid var(--rule)}
+.faqs details:last-child{border-bottom:1px solid var(--rule)}
+.faqs summary{cursor:pointer;list-style:none;padding:13px 0;font-weight:600;font-size:14px;display:flex;justify-content:space-between;gap:16px;
+  transition:color .16s}
+.faqs summary::-webkit-details-marker{display:none}
+.faqs summary::after{content:"+";color:var(--muted);font-weight:400;font-size:18px;line-height:1;transition:transform .25s var(--ease)}
+.faqs details[open] summary::after{transform:rotate(45deg)}
+.faqs summary:hover{color:var(--free)}
+.faqs details p{padding:0 0 14px;margin:0;max-width:66ch;animation:fade .25s var(--ease) both}
+.linkchip{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--rule);
+  border-radius:100px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;
+  transition:transform .14s var(--ease),border-color .16s,box-shadow .2s var(--ease)}
+.linkchip:hover{transform:translateY(-1px);border-color:var(--ink);box-shadow:0 8px 18px -12px rgba(22,19,43,.5)}
+.linkchip .soon-tag{display:none;font-weight:400;color:var(--muted);font-size:12px}
+.linkchip.soon{opacity:.55;pointer-events:none;font-weight:500}
+.linkchip.soon .soon-tag{display:inline}
+
+/* ---------------------------------------------------------------- misc */
+.foot{flex:none;text-align:center;font-size:12.5px;color:var(--muted);padding:0 20px 12px}
+.status{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(6px);background:var(--ink);color:var(--paper);
+  padding:11px 18px;border-radius:100px;font-size:13.5px;max-width:92vw;opacity:0;pointer-events:none;
+  transition:opacity .22s,transform .22s var(--ease);z-index:80}
+.status.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.status.bad{background:var(--alert)}
+
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .docs{grid-template-columns:1fr}
+  .detail{grid-template-columns:1fr}
+  .detail .art.big{max-width:190px;margin:0 auto}
+}
+@media (max-width:980px){
+  nav{flex-wrap:wrap;height:auto;padding:10px 16px 0;gap:10px}
+  .tabs{order:3;width:100%;margin:0 -16px;padding:2px 16px 10px;justify-content:center}
+  .card{max-height:calc(100dvh - 186px)}
+}
+@media (max-width:760px){
+  nav{padding:10px 14px 0}
+  .tabs{margin:0 -14px;padding:2px 14px 10px;justify-content:flex-start}
+  main{padding:0 12px 14px}
+  .headline{display:none}
+  .card{max-height:calc(100dvh - 176px);border-radius:16px}
+  .card.wide{max-width:100%}
+  .hide-sm{display:none}
+  .nfts{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;padding:14px}
+  td,th{padding-left:12px;padding-right:12px}
+  .asset .tile,.asset .tile svg,.asset .tile img{width:30px;height:30px}
+  .stat b{font-size:18px}
+  .btn.block{padding:14px}
+}
+@media (max-height:700px){.headline{display:none}}
+@media (prefers-reduced-motion:reduce){ .pnlbtn,.pnlbtn::after{animation:none!important}  .chip,.chip::before,.chip::after{animation:none!important} .orb{animation:none}*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="ph-enter" id="ph-enter" aria-hidden="true">
+  <div class="ph-wave">
+    <svg class="cap" viewBox="0 0 100 14" preserveAspectRatio="none">
+      <polygon points="0,14 50,0 100,14" fill="#5A3FD0"/>
+      <polygon points="0,14 50,0 100,14 50,2.6" fill="#8C73F0"/>
+    </svg>
+    <div class="body"></div>
+  </div>
+  <div class="word">paperhand</div>
+</div>
+
+<div class="orbs" aria-hidden="true">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div>
+</div>
+
+<div class="app">
+  <nav>
+    <a class="logo" href="../" data-link="site"><svg class="glyph" viewBox="0 0 100 100" aria-hidden="true">
+        <defs><clipPath id="sq"><path d="M26,0 H74 C90,0 100,10 100,26 V74 C100,90 90,100 74,100 H26 C10,100 0,90 0,74 V26 C0,10 10,0 26,0 Z"/></clipPath></defs>
+        <g clip-path="url(#sq)">
+          <rect width="100" height="100" fill="#16132B"/>
+          <g class="fill">
+            <path d="M0 64 Q25 58 50 52 Q75 58 100 64 V220 H0 Z" fill="#5A3FD0"><animate class="wave" attributeName="d" dur="1.8s" repeatCount="indefinite" begin="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" values="M0 64 Q25 58 50 52 Q75 58 100 64 V220 H0 Z;M0 60 Q25 50 50 58 Q75 66 100 58 V220 H0 Z;M0 65 Q25 67 50 56 Q75 47 100 61 V220 H0 Z;M0 64 Q25 58 50 52 Q75 58 100 64 V220 H0 Z"/></path>
+            <path d="M0 64 Q25 58 50 52 Q75 58 100 64 L100 68 Q75 62 50 56 Q25 62 0 68 Z" fill="#8C73F0"><animate class="wave" attributeName="d" dur="1.8s" repeatCount="indefinite" begin="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" values="M0 64 Q25 58 50 52 Q75 58 100 64 L100 68 Q75 62 50 56 Q25 62 0 68 Z;M0 60 Q25 50 50 58 Q75 66 100 58 L100 62 Q75 70 50 62 Q25 54 0 64 Z;M0 65 Q25 67 50 56 Q75 47 100 61 L100 65 Q75 51 50 60 Q25 71 0 69 Z;M0 64 Q25 58 50 52 Q75 58 100 64 L100 68 Q75 62 50 56 Q25 62 0 68 Z"/></path>
+          </g>
+        </g>
+      </svg>paperhand</a>
+    <div class="tabs" id="tabs" role="tablist">
+      <button role="tab" data-view="guide" aria-selected="false" data-t="nav.guide"></button>
+      <button role="tab" data-view="lock" aria-selected="true" data-t="nav.lock"></button>
+      <button role="tab" data-view="portfolio" aria-selected="false" data-t="nav.portfolio"></button>
+      <button role="tab" data-view="assets" aria-selected="false" data-t="nav.assets"></button>
+      <button role="tab" data-view="token" aria-selected="false" data-t="nav.token"></button>
+      <button role="tab" data-view="docs" aria-selected="false" data-t="nav.docs"></button>
+    </div>
+    <div class="grow"></div>
+    <span class="chip" data-t="test.chip"></span>
+    <div class="lang" id="lang">
+      <button data-lang="en" aria-pressed="true">EN</button>
+      <button data-lang="zh" aria-pressed="false">中文</button>
+    </div>
+    <button class="btn" id="connect" data-t="wallet.connect"></button>
+  </nav>
+
+  <div class="testbar" id="testbar">
+    <span data-t-html="test.bar"></span>
+    <span class="soonpill" data-t="test.soon"></span>
+    <button id="tb-guide" data-t="test.how"></button>
+    <button id="tb-reset" data-t="test.reset"></button>
+  </div>
+
+  <main>
+    <div class="headline" id="headline">
+      <h1 data-t="hero.h1"></h1>
+      <p data-t="hero.sub"></p>
+    </div>
+
+    <div class="card" id="card">
+      <div class="view on" id="view-lock">
+        <div class="pad">
+          <div class="field">
+            <label for="amount" data-t="form.amount"></label>
+            <div class="line">
+              <input id="amount" inputmode="decimal" placeholder="0.00" />
+              <span class="picker"><span id="token-mark"></span><select id="token"></select></span>
+            </div>
+            <div class="sub">
+              <span id="amount-usd"></span>
+              <span class="bal"><span data-t="form.balance"></span> <b id="bal">0</b></span>
+            </div>
+            <div class="pcts" id="pcts">
+              <button data-pct="10">10%</button>
+              <button data-pct="25">25%</button>
+              <button data-pct="50">50%</button>
+              <button data-pct="100" data-t="form.max"></button>
+            </div>
+          </div>
+          <div class="duo">
+            <div class="field">
+              <label for="low" data-t="form.low"></label>
+              <div class="line"><input id="low" inputmode="decimal" placeholder="0.00" /></div>
+            </div>
+            <div class="field">
+              <label for="high" data-t="form.high"></label>
+              <div class="line"><input id="high" inputmode="decimal" placeholder="0.00" /></div>
+            </div>
+          </div>
+          <div class="summary">
+            <div class="sumrow">
+              <button class="preview" id="preview" type="button" data-t-title="form.preview"></button>
+              <div class="sumbody">
+                <div class="bar"><i id="fill"></i></div>
+                <div class="barline"><span id="bar-left"></span><span id="bar-right"></span></div>
+                <div class="kv" style="margin-top:10px"><span data-t="form.curPrice"></span><b id="cur-price"></b></div>
+                <div class="kv"><span data-t="form.cost"></span><b id="fee">1 PAPERHAND</b></div>
+              </div>
+            </div>
+          </div>
+          <button class="btn block" id="lock" data-t="form.lock"></button>
+        </div>
+      </div>
+
+      <div class="view" id="view-portfolio">
+        <div class="top"><div class="ttl"><h2 data-t="portfolio.title"></h2><p class="sub" data-t="head.portfolio"></p></div><span class="pill" id="vault-count"></span></div>
+        <div class="scroll" id="portfolio-body"></div>
+      </div>
+
+      <div class="view" id="view-assets">
+        <div class="top"><div class="ttl"><h2 data-t="assets.title"></h2><p class="sub" data-t="head.assets"></p></div><span class="pill" id="assets-note"></span></div>
+        <div class="scroll" id="assets-body"></div>
+      </div>
+
+      <div class="view" id="view-token">
+        <div class="top"><div class="ttl"><h2>$PAPERHAND</h2><p class="sub" data-t="head.token"></p></div></div>
+        <div class="scroll" id="token-body"></div>
+      </div>
+
+      <div class="view" id="view-guide">
+        <div class="top"><div class="ttl"><h2 data-t="guide.title"></h2><p class="sub" data-t="head.guide"></p></div><span class="pill" id="guide-chain"></span></div>
+        <div class="scroll" id="guide-body"></div>
+      </div>
+
+      <div class="view" id="view-docs">
+        <div class="top"><div class="ttl"><h2 data-t="docs.title"></h2><p class="sub" data-t="head.docs"></p></div></div>
+        <div class="scroll" id="docs-body"></div>
+      </div>
+    </div>
+  </main>
+
+  <p class="foot" data-t="footer"></p>
+</div>
+
+<div class="status" id="status"></div>
+
+<script>
+/* =================================================================== config
+   TEST VERSION. The vault contract is not deployed yet, so every price,
+   balance and vault on this page is simulated in the browser (localStorage).
+   The wallet connection is real: it adds 0G Mainnet (chain 16661) and switches
+   to it, but nothing is ever signed or sent.
+   Going live is a config change: set VAULT, PAPERHAND and TREASURY (here or
+   in config.js), give each token its address, and set TEST_MODE to false.  */
+const COMFY = "https://www.comfy.fun";
+
+const CONFIG = {
+  TEST_MODE: true,
+  VAULT: "",                                          // PaperhandVault on 0G, coming soon
+  PAPERHAND: "",                                      // $PAPERHAND, launched on Comfy
+  TREASURY: "",                                       // buyback and burn treasury
+  MARKET: "",                                         // NFT marketplace for vaults, coming soon
+  FEES: { trade: 1, agent: 50 },                      // Comfy trade fee, and the creator share the agent receives
+  RPC: "https://evmrpc.0g.ai",                        // public, no key, read only
+  EXPLORER: "https://chainscan.0g.ai",
+  CHAIN: {
+    chainId: "0x4115",                                // 16661
+    chainName: "0G Mainnet",
+    nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
+    rpcUrls: ["https://evmrpc.0g.ai"],
+    blockExplorerUrls: ["https://chainscan.0g.ai"]
+  },
+  MAX_FEED_AGE: 86400,
+  SNAPSHOT_AT: "",
+  /* Test tokens. They stand in for tokens launched on Comfy; none of them is
+     real and none has an address. At launch any Comfy token can be locked. */
+  TOKENS: [
+    { symbol: "COZY", name: "Cozy agent (test)",  tint: "#5A3FD0", decimals: 18, demo: 0.0042, demoBalance: 250000, address: "", feed: "", trade: COMFY },
+    { symbol: "NAPS", name: "Naps agent (test)",  tint: "#2F6FB0", decimals: 18, demo: 0.0187, demoBalance: 60000,  address: "", feed: "", trade: COMFY },
+    { symbol: "WARM", name: "Warm agent (test)",  tint: "#C0673A", decimals: 18, demo: 0.0009, demoBalance: 900000, address: "", feed: "", trade: COMFY },
+    { symbol: "PURR", name: "Purr agent (test)",  tint: "#2E8A7E", decimals: 18, demo: 0.0631, demoBalance: 15000,  address: "", feed: "", trade: COMFY },
+    { symbol: "HEARTH", name: "Hearth agent (test)", tint: "#8A4FA8", decimals: 18, demo: 0.1240, demoBalance: 8000, address: "", feed: "", trade: COMFY }
+  ]
+};
+
+/* config.js, when present, overrides everything in this block. Defaults stay
+   here so the file still works on its own, dropped anywhere, with no server. */
+if (window.PAPERHAND_CONFIG) Object.assign(CONFIG, window.PAPERHAND_CONFIG);
+
+/* Fill these in when they exist. Anything left empty renders as a dimmed,
+   non clickable label instead of a link that goes nowhere. */
+const LINKS = {
+  site: "../",                                        // the landing page, one folder up
+  contract: "",                                       // coming soon
+  paperhand: "",                                      // coming soon
+  comfy: COMFY,
+  x: "https://x.com/paperhandagent",
+  telegram: ""
+};
+if (window.PAPERHAND_LINKS) Object.assign(LINKS, window.PAPERHAND_LINKS);
+
+function applyLinks(root = document){
+  root.querySelectorAll("[data-link]").forEach(a => {
+    let url = LINKS[a.dataset.link];
+    if (!url && a.dataset.link === "contract" && CONFIG.VAULT) url = CONFIG.EXPLORER + "/address/" + CONFIG.VAULT;
+    if (!url && a.dataset.link === "paperhand" && CONFIG.PAPERHAND) url = CONFIG.EXPLORER + "/token/" + CONFIG.PAPERHAND;
+    if (url){
+      a.href = url;
+      a.classList.remove("soon");
+      if (/^https?:/.test(url)){ a.target = "_blank"; a.rel = "noopener"; }
+    } else {
+      a.removeAttribute("href");
+      a.classList.add("soon");
+    }
+  });
+}
+
+/* ===================================================================== i18n */
+const I18N = {
+en: {
+  "nav.lock":"Lock", "nav.portfolio":"Portfolio", "nav.assets":"Assets", "nav.token":"$PAPERHAND", "nav.docs":"Docs",
+  "wallet.connect":"Connect wallet",
+  "rpc.ok":"Live from the chain", "rpc.fail":"No price",
+  "rpc.snap":"Snapshot, read {d}", "rpc.snapTag":"snapshot",
+  "rpc.blocked":"the request never left the page",
+  "rpc.ratelimited":"the public RPC is rate limiting this page",
+  "rpc.http":"the RPC answered with an error",
+  "rpc.rpcerror":"the node rejected the call",
+  "rpc.norpc":"no RPC URL is set",
+  "rpc.idle":"not queried yet",
+  "rpc.use":"Use this RPC", "rpc.reset":"Reset",
+  "rpc.why":"These are the last prices read from Robinhood Chain, frozen at that date, not a live quote. The page cannot reach the RPC from where it is running: a preview frame forbids outside requests, and a file opened from disk has no origin the node will accept. Serve this file over http, from any static host, and the same code reads the chain live. The endpoint above is editable.",
+  "assets.token":"Token", "assets.feed":"Feed",
+  "assets.buy":"Buy", "assets.paused":"Paused",   "assets.minAgo":"{n} min ago", "assets.hourAgo":"{n} h ago", "assets.dayAgo":"{n} d ago",
+  "assets.real":"Prices are read from the Chainlink proxy on Robinhood Chain over the public RPC, the same proxy the vault reads. The token price is the share price times the token multiplier, so it drifts from the Nasdaq print as dividends are reinvested. The share column backs that multiplier out.",
+  "msg.notDeployed":"The vault contract is not reachable right now.",
+  "hero.h1":"Lock it until the price says otherwise.",
+  "hero.sub":"Your tokens come back one slice at a time, as the price climbs.",
+  "form.amount":"Lock", "form.max":"Max", "form.balance":"Balance",
+  "msg.noBalance":"You have none of this token in this wallet.",
+  "form.low":"Unlocking starts at", "form.high":"Fully unlocked at",
+  "form.preview":"The card this vault will mint", "form.previewNote":"This is the NFT you will receive, drawn by the same code the contract uses.",
+  "form.curPrice":"Current price", "form.cost":"Cost to open", "form.lock":"Lock tokens",
+  "form.setRange":"Set a range to see the unlock", "form.unlocked":"{p}% unlocked at this price",
+  "form.aboveSpot":"Range starts above the current price",
+  "portfolio.title":"Your vaults", "portfolio.count":"{n} open",
+  "portfolio.empty":"No vaults yet. Lock something and it shows up here as an NFT.",
+  "portfolio.connect":"Connect your wallet to see your vaults.",
+  "portfolio.back":"All vaults",
+  "assets.title":"Assets", "assets.live":"Live feeds",
+  "assets.col.asset":"Asset", "assets.col.price":"Price", "assets.col.status":"Feed",
+  "assets.col.locked":"You locked",
+  "assets.ok":"Live", "assets.down":"Unavailable",
+  "nft.title":"Vault #{id}",
+  "nft.inside":"Inside", "nft.range":"Range", "nft.unlocked":"Unlocked", "nft.ready":"Ready to claim",
+  "nft.priceNow":"Price now", "nft.highWater":"Highest price seen", "nft.opened":"Opened",
+  "nft.claim":"Claim {a} {s}", "nft.claimSub":"{pct}% of the vault unlocked", "nft.claimAll":"Claim all {a} {s}", "nft.claimAllSub":"fully unlocked, the vault closes after this", "nft.claimNone":"Nothing to claim", "nft.send":"Send", "nft.exit":"Close early",
+  "nft.exitHint":"Closing now returns {r} {s} and gives up {p} {s} as the 30% cut.",
+  "nft.claimHint":"The price has to climb into your range before anything can be claimed.",
+  "nft.sendTo":"Send this vault to", "nft.sendBtn":"Send vault", "nft.cancel":"Cancel",
+  "nft.sendWarn":"The whole position goes with the NFT. Whoever holds it can claim and close the vault.",
+  "nft.confirmExit":"Close this vault early?", "nft.exitNow":"Close and pay 30%", "ask.cancel":"Cancel",
+  "token.tba":"TBA", "token.pre":"Pre-launch",
+  "token.price":"Token price", "token.supply":"Total supply", "token.burned":"Burned so far",
+  "token.h1":"What the token does",
+  "token.p1":"Every vault costs PAPERHAND, burned on the spot. The treasury is funded three ways: the 30% early exit penalties, a 2% fee on every buy and a 2% fee on every sell of the token, collected in ETH, and the 3% royalty on vault resales. That treasury is spent buying PAPERHAND back. Supply shrinks when people lock, and buy pressure grows when people give up or trade.",
+  "token.note":"Price, supply and market cap are published when the token launches.",
+  "link.contract":"Vault contract", "link.github":"GitHub", "link.paperhand":"$PAPERHAND contract",
+  "link.x":"X", "link.telegram":"Telegram", "link.soon":"soon",
+  "docs.title":"Docs",
+  "docs.idea.h":"The idea",
+  "docs.idea.p":"People rarely sell too early for lack of information. They sell too early because the decision gets made at the worst moment, under the most pressure. Paperhand moves that decision to a calm moment: you set the range once, and the price carries it out.",
+  "docs.range.h":"How the range works",
+  "docs.range.p":"Nothing unlocks below the bottom of your range, everything unlocks at the top, and it is a straight line in between. Halfway up the range, half the vault is claimable. The range has to start at or above the current price, so every vault begins fully locked.",
+  "docs.example.h":"An example",
+  "docs.example.p":"Lock 100 NVDA with a range from $230 to $320. At $275 the price has covered half the range, so 50 NVDA are yours to claim. At $297.50 it is 75. At $320 all 100 are free. Claim as often as you like; each claim sends whatever the price has released since the last one.",
+  "docs.ratchet.h":"Released stays released",
+  "docs.ratchet.p":"The vault remembers the highest price it has seen. If the price spikes and falls back, whatever that spike released stays claimable. Anyone can record a new high for any vault, so a wick you slept through still counts.",
+  "docs.exit.h":"Leaving early",
+  "docs.exit.p":"You can close a vault at any time. The part already released comes back whole, and the part still locked loses 30%. That cut goes to the treasury, which spends it buying back PAPERHAND. There is no other exit fee.",
+  "docs.mature.h":"The 700 day backstop",
+  "docs.mature.p":"A vault that is 700 days old closes with no penalty at all, whatever the price did. If the market never reaches your range, you wait it out and the deposit comes back whole. The date is fixed at mint and shown on every vault.",
+  "docs.price.h":"Where prices come from",
+  "docs.price.p":"Chainlink feeds on Robinhood Chain, read over the public RPC, from the same proxies the vault reads. A feed prices one token, which is the share price times the token multiplier, so it sits slightly above the Nasdaq print and drifts as dividends are reinvested.",
+  "docs.oracle.h":"If the oracle fails",
+  "docs.oracle.p":"Nothing you do depends on a live price. Claiming and closing run off the stored high water mark, so a stale, paused or broken feed can never trap a deposit. If a feed stays silent for 30 days, closing on that token becomes free.",
+  "docs.custody.h":"Who holds your tokens",
+  "docs.custody.p":"The contract does, and only the holder of the vault NFT can take them out. No admin key can move, seize or unlock a deposit, and the terms of a vault can never be edited once it is open. The penalty destination was set once and is permanent.",
+  "docs.nft.h":"Every vault is an NFT",
+  "docs.nft.p":"Opening a vault mints an NFT to your wallet. The card is drawn on chain from the asset, the range and the vault number, and it fills in as the price climbs. Sending the NFT sends the position. It is burned when the vault closes.",
+  "docs.market.h":"Buying and selling vaults",
+  "docs.market.p":"A holder who wants out can close and lose 30% of the locked part, or sell the NFT. Any price above the close value beats the penalty for the seller, and the buyer gets the tokens below market plus the unlock schedule. So a vault trades between its close value and its full value. The discount is at most 30% of what is still locked, and it shrinks as the price climbs and as maturity nears. Resales pay a 3% royalty to the treasury.",
+  "docs.cost.h":"What it costs",
+  "docs.cost.p":"Opening a vault costs a fee in PAPERHAND, burned on the spot. Until the token launches, vaults are free. Claiming, sending and closing cost nothing beyond gas.",
+  "docs.faq.h":"Questions",
+  "faq.1.q":"What if the price never reaches my range?",
+  "faq.1.a":"Your tokens stay locked until the vault is 700 days old, then you close it for free and get everything back. You can also leave earlier and pay 30% on the locked part, or sell the NFT.",
+  "faq.2.q":"Can I add tokens to a vault, or change its range?",
+  "faq.2.a":"No. The terms are fixed at mint, which is what lets a buyer trust what they see. Open a second vault instead.",
+  "faq.3.q":"Why 30%?",
+  "faq.3.a":"High enough to stop an impulse, low enough that you are never trapped. It only applies to what is still locked, never to what the price has already released.",
+  "faq.4.q":"Where does the penalty go?",
+  "faq.4.a":"To the treasury, alongside the 2% buy and 2% sell fees on $PAPERHAND, paid in ETH, and the 3% resale royalty. The treasury spends it buying back PAPERHAND. Its address and balances are on the $PAPERHAND tab.",
+  "faq.5.q":"What happens if the price spikes and falls back?",
+  "faq.5.a":"What the spike released stays released. The vault keeps the highest price it has seen and never gives it back.",
+  "faq.6.q":"Why can a claim do nothing on a weekend?",
+  "faq.6.a":"Stock feeds pause while the market is shut, so the vault cannot record a new high until trading resumes. Anything already released is always claimable, feed or no feed.",
+  "faq.7.q":"Can anyone take my tokens?",
+  "faq.7.a":"No. There is no function that moves, seizes or unlocks a deposit, no upgradeable proxy, and no admin override. Only the NFT holder can claim or close.",
+  "faq.8.q":"What if Chainlink stops working?",
+  "faq.8.a":"Claiming and closing keep working off stored state. If a feed is silent for 30 days, closing on that token becomes free.",
+  "faq.9.q":"Can I sell my vault?",
+  "faq.9.a":"Yes, it is an NFT. List it on OpenSea like any other. The buyer receives the whole position and a 3% royalty goes to the treasury.",
+  "faq.10.q":"How much is a vault worth?",
+  "faq.10.a":"Somewhere between what closing it pays today and the full value of the tokens inside. The app shows both numbers on every vault.",
+  "faq.11.q":"Why is the token price different from Nasdaq?",
+  "faq.11.a":"A Robinhood stock token is worth one share times a multiplier that grows as dividends are reinvested. The vault settles on the token price, which is the number that matters here.",
+  "faq.12.q":"Which tokens can I lock?",
+  "faq.12.a":"Stock tokens with a Chainlink feed on Robinhood Chain, listed in the Assets tab with links to their contract and their feed.",
+  "faq.13.q":"What does opening a vault cost?",
+  "faq.13.a":"A fee in PAPERHAND, burned when you open, plus gas. Vaults are free until the token launches.",
+  "faq.14.q":"Is the contract audited?",
+  "faq.14.a":"Not yet. It is covered by 38 tests, including a fuzzed check that every token going in comes out exactly once, and the source is published. Start with amounts you are comfortable with.",
+  "docs.links.h":"Contracts and links",
+  "docs.links.p":"The vault contract, the source, and where the project posts.",
+  "token.vaults":"Open vaults",
+  "token.closed":"Closed vaults",
+  "token.tvl":"Total value locked",
+  "token.treasury":"Buyback treasury",
+  "token.where":"Where the money sits",
+  "token.addr.vault":"Vault contract",
+  "token.addr.vaultSub":"holds the TVL",
+  "token.addr.treasury":"Treasury",
+  "token.addr.treasurySub":"penalties, fees, royalties",
+  "token.h2":"By asset",
+  "token.inVault":"In the vault",
+  "token.inTreasury":"In the treasury",
+  "token.mkt.h":"Buy vaults below market",
+  "token.mkt.p1":"Someone who wants out early can close and lose 30% of what is still locked, or sell the NFT for less than its full value. The buyer gets the tokens at a discount, plus the unlock schedule.",
+  "token.mkt.p2":"A vault can never rationally trade below its close value, since the buyer could close it the next day. The discount is bounded, visible on every card, and shrinks as the vault matures.",
+  "token.mkt.cta":"Browse vaults on OpenSea",
+  "nft.atFull":"Worth at full unlock", "nft.upside":"Upside from here",
+  "nft.up.h":"If {p} is reached", "nft.up.p":"{now} today, {full} at the top of your range. That is {gain} more.",
+  "nft.up.q":"{pct} measured against closing today, which pays {liquid}.", "nft.up.card":"PnL card",
+  "pnl.line":"if {s} reaches {p}", "pnl.sub":"{pct} of this vault is already released",
+  "pnl.locked":"Locked", "pnl.now":"Worth today", "pnl.exit":"If closed today", "pnl.full":"At full unlock",
+  "pnl.vs":"{pct} measured against closing today",
+  "pnl.download":"Download card", "pnl.share":"Share on X",
+  "pnl.text":"My Paperhand vault #{id}: {s} locked until {p}. {pct} if it fills.",
+  "nft.deposited":"Deposited", "nft.claimed":"Claimed so far", "nft.up.to":"if {p} is reached", "nft.up.vs":"vs closing now", "nft.worth":"Worth now",
+  "nft.matures":"Free to close from",
+  "nft.sell.h":"Sell instead of closing",
+  "nft.sell.p":"Any buyer above {floor} beats your {cut} penalty.",
+  "nft.sell.cta":"List on OpenSea",
+  "token.fees":"Trading fees",
+  "token.feesVal":"{b}% buy, {s}% sell",
+  "token.notLockable":"not lockable",
+  "token.fund.h":"How the treasury is funded",
+  "token.fund.penalty":"of what is still locked, when a vault closes early. Paid in the locked token.",
+  "token.fund.fees":"on every buy and every sell of $PAPERHAND. Paid in ETH.",
+  "token.fund.royalty":"on every vault resold on a marketplace.",
+  "docs.treasury.h":"The treasury",
+  "docs.treasury.p":"One address receives everything the protocol earns: the 30% early exit penalties in the locked stock tokens, the 2% buy and 2% sell fees on $PAPERHAND in ETH, and the 3% royalty on vault resales. It is spent buying back PAPERHAND. The address and its balances are public on the $PAPERHAND tab.",
+  "faq.15.q":"Does $PAPERHAND have a trading fee?",
+  "faq.15.a":"Yes, 2% on buys and 2% on sells. It is paid in ETH into the treasury and funds the buyback, on top of the vault penalties and royalties.",
+  "head.portfolio":"Every vault you hold, and what each one is worth right now.",
+  "head.assets":"What can be locked, priced by the same feeds the vault settles on.",
+  "head.token":"What the protocol earns, where it sits, and what it buys back.",
+  "head.docs":"How a vault works, end to end, and the questions people ask first.",
+  "msg.needAmount":"Enter an amount to lock.",
+  "msg.needRange":"Set both ends of the price range.",
+  "msg.badRange":"The top of the range has to be above the bottom.",
+  "msg.belowSpot":"The range has to start at or above {p}.",
+  "msg.noWallet":"No wallet detected in this browser.",
+  "msg.approving":"Approving {s}", "msg.locking":"Locking {a} {s}",
+  "msg.locked":"Vault #{id} is open.", "msg.lockedLive":"Your vault is open.",
+  "msg.claiming":"Claiming", "msg.claimed":"Claimed {a} {s}.",
+  "msg.closing":"Closing", "msg.closed":"Vault closed. {a} {s} back, {p} {s} kept as the cut.",
+  "msg.badAddress":"That is not a valid address.",
+  "msg.sending":"Sending vault #{id}", "msg.sent":"Vault sent to {a}.",
+  "msg.connectFirst":"Connect your wallet first.",
+  "err.declined":"Signature declined",
+  "err.TreasuryNotSet":"The vault is deployed but not configured yet. Nothing can be opened until its treasury is set.",
+  "err.TokenNotAllowed":"That token is not whitelisted on the vault yet.",
+  "err.NoPrice":"No usable price for that token right now.",
+  "err.RangeBelowMarket":"The range has to start at or above the current price.",
+  "err.BadRange":"The top of the range has to be above the bottom.",
+  "err.NotHolder":"This vault belongs to another wallet.",
+  "err.NothingToClaim":"Nothing to claim at this price yet.",
+  "err.ZeroAmount":"That amount came through as zero.",
+  "err.stale":"The price feed is stale. Stock feeds pause outside market hours.",
+  "err.belowSpot":"The range has to start at or above the current price.",
+  "err.notAllowed":"That token is not whitelisted yet.",
+  "err.sequencer":"The chain sequencer is catching up. Try again in a few minutes.",
+  "err.network":"The wallet changed network mid flight. Reload the page.", "err.generic":"Transaction failed",
+  "footer":"Non-custodial vaults on Robinhood Chain. No admin key can move, seize or unlock a deposit."
+},
+zh: {
+  "nav.lock":"锁仓", "nav.portfolio":"我的金库", "nav.assets":"资产", "nav.token":"$PAPERHAND", "nav.docs":"文档",
+  "wallet.connect":"连接钱包",
+  "rpc.ok":"链上实时价格", "rpc.fail":"无法获取价格",
+  "rpc.snap":"快照，读取于 {d}", "rpc.snapTag":"快照",
+  "rpc.blocked":"请求根本没有发出去",
+  "rpc.ratelimited":"公共 RPC 对本页面限流了",
+  "rpc.http":"RPC 返回了错误",
+  "rpc.rpcerror":"节点拒绝了这次调用",
+  "rpc.norpc":"没有设置 RPC 地址",
+  "rpc.idle":"尚未查询",
+  "rpc.use":"使用该 RPC", "rpc.reset":"恢复默认",
+  "rpc.why":"这些是当时从 Robinhood Chain 读到的最后价格，定格在该日期，不是实时报价。页面在当前环境下无法访问 RPC：预览框架禁止对外请求，而从磁盘直接打开的文件没有节点会接受的来源。把这个文件用任意静态托管以 http 方式提供，同样的代码就能实时读取链上数据。上方的节点地址可以修改。",
+  "assets.token":"代币", "assets.feed":"预言机",
+  "assets.buy":"购买", "assets.paused":"已暂停",   "assets.minAgo":"{n} 分钟前", "assets.hourAgo":"{n} 小时前", "assets.dayAgo":"{n} 天前",
+  "assets.real":"价格通过公共 RPC 从 Robinhood Chain 上的 Chainlink 代理合约读取，与金库合约读取的是同一个代理。代币价格等于股价乘以代币乘数，由于分红会再投资，它会逐渐偏离纳斯达克的报价。对应股价这一列就是把乘数还原后的结果。",
+  "msg.notDeployed":"目前无法访问金库合约。",
+  "hero.h1":"锁住它，直到价格说可以。",
+  "hero.sub":"随着价格上涨，代币会一份一份回到你手里。",
+  "form.amount":"锁仓", "form.max":"全部", "form.balance":"余额",
+  "msg.noBalance":"这个钱包里没有该代币。",
+  "form.low":"开始解锁价格", "form.high":"全部解锁价格",
+  "form.preview":"这个金库将铸造的卡片", "form.previewNote":"这就是你将收到的 NFT，由与合约相同的代码绘制。",
+  "form.curPrice":"当前价格", "form.cost":"开仓成本", "form.lock":"锁定代币",
+  "form.setRange":"设置区间以查看解锁进度", "form.unlocked":"在此价格已解锁 {p}%",
+  "form.aboveSpot":"区间起点高于当前价格",
+  "portfolio.title":"我的金库", "portfolio.count":"{n} 个进行中",
+  "portfolio.empty":"还没有金库。锁一笔仓位，它会以 NFT 的形式出现在这里。",
+  "portfolio.connect":"请连接钱包以查看你的金库。",
+  "portfolio.back":"返回列表",
+  "assets.title":"资产", "assets.live":"实时预言机",
+  "assets.col.asset":"资产", "assets.col.price":"价格", "assets.col.status":"预言机",
+  "assets.col.locked":"我已锁定",
+  "assets.ok":"正常", "assets.down":"不可用",
+  "nft.title":"金库 #{id}",
+  "nft.inside":"库内资产", "nft.range":"区间", "nft.unlocked":"已解锁", "nft.ready":"可领取",
+  "nft.priceNow":"当前价格", "nft.highWater":"历史最高价", "nft.opened":"开仓时间",
+  "nft.claim":"领取 {a} {s}", "nft.claimSub":"金库已解锁 {pct}%", "nft.claimAll":"全部领取 {a} {s}", "nft.claimAllSub":"已完全解锁，领取后金库结束", "nft.claimNone":"暂无可领取", "nft.send":"转出", "nft.exit":"提前退出",
+  "nft.exitHint":"现在关闭将返还 {r} {s}，并按 30% 罚金付出 {p} {s}。",
+  "nft.claimHint":"价格需要进入你的区间之后才会有可领取的部分。",
+  "nft.sendTo":"将这个金库转给", "nft.sendBtn":"转出金库", "nft.cancel":"取消",
+  "nft.sendWarn":"整个仓位会随 NFT 一起转走。持有 NFT 的人可以领取并关闭这个金库。",
+  "nft.confirmExit":"确认提前关闭这个金库？", "nft.exitNow":"关闭并支付 30%", "ask.cancel":"取消",
+  "token.tba":"待定", "token.pre":"尚未上线",
+  "token.price":"代币价格", "token.supply":"总供应量", "token.burned":"已销毁",
+  "token.h1":"代币的作用",
+  "token.p1":"每开一个金库消耗 PAPERHAND，当场销毁。金库有三个资金来源：30% 的提前退出罚金；每笔代币买入 2%、卖出 2% 的交易费，以 ETH 收取；以及金库二级转售的 3% 版税。这些资金用于回购 PAPERHAND。有人锁仓，供应减少；有人放弃或交易，买盘增加。",
+  "token.note":"价格、供应量和市值将在代币上线时公布。",
+  "link.contract":"金库合约", "link.github":"GitHub", "link.paperhand":"$PAPERHAND contract",
+  "link.x":"X", "link.telegram":"Telegram", "link.soon":"即将开放",
+  "docs.title":"文档",
+  "docs.idea.h":"理念",
+  "docs.idea.p":"人们卖得太早，很少是因为缺少信息，而是因为卖出的决定总在最糟糕、压力最大的时刻做出。Paperhand 把这个决定挪到冷静的时刻：你只设定一次区间，之后由价格来执行。",
+  "docs.range.h":"区间怎么运作",
+  "docs.range.p":"价格低于区间下沿时不会解锁，到达上沿时全部解锁，中间是线性的。价格走到区间一半，就有一半可以领取。区间起点必须等于或高于当前价格，所以每个金库一开始都是完全锁定的。",
+  "docs.example.h":"举个例子",
+  "docs.example.p":"用 230 到 320 美元的区间锁 100 枚 NVDA。价格到 275 美元时刚好走完一半区间，可以领取 50 枚；到 297.50 美元是 75 枚；到 320 美元时 100 枚全部解锁。你可以随时领取，每次领取会把上次之后新释放的部分发给你。",
+  "docs.ratchet.h":"释放不会倒退",
+  "docs.ratchet.p":"金库会记住见过的最高价格。即使价格冲高后回落，那一刻释放的部分依然可以领取。任何人都可以为任何金库记录新高，所以你睡着时的那根插针也照样算数。",
+  "docs.exit.h":"提前退出",
+  "docs.exit.p":"你随时可以关闭金库。已经释放的部分全额返还，仍被锁定的部分扣除 30%。这笔钱进入金库地址，用于回购 PAPERHAND。除此之外没有其他退出费用。",
+  "docs.mature.h":"700 天兜底",
+  "docs.mature.p":"满 700 天的金库可以零罚金关闭，无论价格走势如何。如果市场始终没到你的区间，等到期限，存款全额取回。这个日期在铸造时就已确定，并显示在每个金库上。",
+  "docs.price.h":"价格从哪里来",
+  "docs.price.p":"来自 Robinhood Chain 上的 Chainlink 预言机，通过公共 RPC 读取，与金库读取的是同一批代理合约。预言机给出的是一枚代币的价格，等于股价乘以代币乘数，因此略高于纳斯达克报价，并随分红再投资而漂移。",
+  "docs.oracle.h":"如果预言机失效",
+  "docs.oracle.p":"你的任何操作都不依赖实时价格。领取和关闭都基于已存储的最高价，所以过期、暂停或损坏的预言机都无法困住存款。如果某个预言机连续 30 天无更新，该代币上的金库关闭即免罚金。",
+  "docs.custody.h":"代币由谁保管",
+  "docs.custody.p":"由合约保管，只有金库 NFT 的持有人能取出。没有任何管理员密钥可以转移、没收或解锁存款，金库开启后条款也无法修改。罚金去向只设置一次，永久不变。",
+  "docs.nft.h":"每个金库都是一个 NFT",
+  "docs.nft.p":"开仓时会向你的钱包铸造一枚 NFT。卡面由资产、区间和金库编号在链上绘制，并随价格上涨逐渐填满。转出 NFT 就是转出仓位，金库关闭时 NFT 会被销毁。",
+  "docs.market.h":"买卖金库",
+  "docs.market.p":"想提前离场的持有人可以关闭金库、损失锁定部分的 30%，也可以卖掉 NFT。对卖家来说，任何高于关闭价值的价格都比罚金划算；买家则以低于市价的价格拿到代币和解锁计划。因此金库的成交价介于关闭价值和完整价值之间。折价最多是仍锁定部分的 30%，并随价格上涨和临近到期而缩小。二级转售向金库地址支付 3% 版税。",
+  "docs.cost.h":"费用",
+  "docs.cost.p":"开一个金库需要支付 PAPERHAND 作为费用，当场销毁。代币上线前，开仓免费。领取、转出和关闭除 gas 外没有其他费用。",
+  "docs.faq.h":"常见问题",
+  "faq.1.q":"如果价格一直没到我的区间怎么办？",
+  "faq.1.a":"代币会一直锁定，直到金库满 700 天，届时可以免费关闭并全额取回。你也可以提前离开并对锁定部分支付 30%，或者卖掉 NFT。",
+  "faq.2.q":"可以往金库里追加代币，或修改区间吗？",
+  "faq.2.a":"不可以。条款在铸造时就已固定，这正是买家可以信任卡面信息的原因。需要的话请再开一个金库。",
+  "faq.3.q":"为什么是 30%？",
+  "faq.3.a":"足以阻止冲动，又不至于把你困死。它只作用于仍被锁定的部分，绝不涉及价格已经释放的部分。",
+  "faq.4.q":"罚金去哪了？",
+  "faq.4.a":"进入金库地址，同时进入的还有以 ETH 支付的 $PAPERHAND 买入 2%、卖出 2% 交易费，以及 3% 的转售版税。这些资金用于回购 PAPERHAND，地址和余额可在 $PAPERHAND 页面查看。",
+  "faq.5.q":"价格冲高后又跌回来会怎样？",
+  "faq.5.a":"冲高时释放的部分保持释放。金库会记住见过的最高价，永远不会收回。",
+  "faq.6.q":"为什么周末领取有时没有变化？",
+  "faq.6.a":"休市期间股票预言机暂停更新，金库在恢复交易前无法记录新高。已经释放的部分无论预言机状态如何，都可以随时领取。",
+  "faq.7.q":"有人能拿走我的代币吗？",
+  "faq.7.a":"不能。合约里没有任何转移、没收或解锁存款的函数，没有可升级代理，也没有管理员后门。只有 NFT 持有人可以领取或关闭。",
+  "faq.8.q":"如果 Chainlink 停止工作呢？",
+  "faq.8.a":"领取和关闭会基于已存储的状态继续工作。如果某个预言机连续 30 天无更新，该代币上的金库关闭即免罚金。",
+  "faq.9.q":"可以卖掉我的金库吗？",
+  "faq.9.a":"可以，它是一个 NFT，像其他 NFT 一样在 OpenSea 上架即可。买家获得整个仓位，3% 版税归金库地址。",
+  "faq.10.q":"一个金库值多少？",
+  "faq.10.a":"介于现在关闭能拿回的数额和库内代币完整价值之间。应用在每个金库上都会显示这两个数字。",
+  "faq.11.q":"为什么代币价格和纳斯达克不一样？",
+  "faq.11.a":"Robinhood 股票代币的价值等于一股乘以一个随分红再投资增长的乘数。金库以代币价格结算，这才是这里重要的数字。",
+  "faq.12.q":"可以锁哪些代币？",
+  "faq.12.a":"在 Robinhood Chain 上拥有 Chainlink 预言机的股票代币，都列在资产页面，并附有合约和预言机链接。",
+  "faq.13.q":"开一个金库要多少钱？",
+  "faq.13.a":"一笔 PAPERHAND 费用，开仓时销毁，外加 gas。代币上线前开仓免费。",
+  "faq.14.q":"合约经过审计了吗？",
+  "faq.14.a":"还没有。它有 38 个测试覆盖，包括一个模糊测试，验证每个存入的代币都恰好取出一次，源代码公开。请从你能接受的金额开始。",
+  "docs.links.h":"合约与链接",
+  "docs.links.p":"金库合约、源代码，以及项目发布消息的地方。",
+  "token.vaults":"进行中的金库",
+  "token.closed":"已关闭的金库",
+  "token.tvl":"锁仓总价值",
+  "token.treasury":"回购金库",
+  "token.where":"资金在哪里",
+  "token.addr.vault":"金库合约",
+  "token.addr.vaultSub":"持有锁仓资金",
+  "token.addr.treasury":"金库地址",
+  "token.addr.treasurySub":"罚金、交易费、版税",
+  "token.h2":"按资产",
+  "token.inVault":"金库合约中",
+  "token.inTreasury":"金库地址中",
+  "token.mkt.h":"以低于市价买入金库",
+  "token.mkt.p1":"想提前离场的人可以关闭金库、损失仍锁定部分的 30%，也可以以低于完整价值的价格卖掉 NFT。买家以折扣拿到代币，外加解锁计划。",
+  "token.mkt.p2":"金库的合理价格不会低于其关闭价值，因为买家第二天就可以关闭它。折扣有上限，每张卡上都能看到，并随金库临近到期而缩小。",
+  "token.mkt.cta":"在 OpenSea 浏览金库",
+  "nft.atFull":"完全解锁时的价值", "nft.upside":"从现在起的上行空间",
+  "nft.up.h":"如果达到 {p}", "nft.up.p":"今天 {now}，区间上沿时 {full}，相差 {gain}。",
+  "nft.up.q":"与今天关闭相比是 {pct}，今天关闭可得 {liquid}。", "nft.up.card":"收益卡片",
+  "pnl.line":"如果 {s} 达到 {p}", "pnl.sub":"这个金库已释放 {pct}",
+  "pnl.locked":"已锁定", "pnl.now":"当前价值", "pnl.exit":"今天关闭可得", "pnl.full":"完全解锁时",
+  "pnl.vs":"与今天关闭相比为 {pct}",
+  "pnl.download":"下载卡片", "pnl.share":"分享到 X",
+  "pnl.text":"我的 Paperhand 金库 #{id}：{s} 锁定到 {p}，填满可达 {pct}。",
+  "nft.deposited":"存入总量", "nft.claimed":"已领取", "nft.up.to":"如果达到 {p}", "nft.up.vs":"对比现在关闭", "nft.worth":"当前价值",
+  "nft.matures":"免罚金关闭起始日",
+  "nft.sell.h":"与其关闭，不如卖出",
+  "nft.sell.p":"任何出价高于 {floor} 的买家都比你 {cut} 的罚金划算。",
+  "nft.sell.cta":"在 OpenSea 上架",
+  "token.fees":"交易费",
+  "token.feesVal":"买入 {b}%，卖出 {s}%",
+  "token.notLockable":"不可锁仓",
+  "token.fund.h":"金库资金来源",
+  "token.fund.penalty":"金库提前关闭时，仍锁定部分的比例。以被锁定的代币支付。",
+  "token.fund.fees":"每一笔 $PAPERHAND 买入和卖出。以 ETH 支付。",
+  "token.fund.royalty":"每一个在市场上转售的金库。",
+  "docs.treasury.h":"金库地址",
+  "docs.treasury.p":"协议的所有收入都进入同一个地址：以被锁定股票代币支付的 30% 提前退出罚金、以 ETH 支付的 $PAPERHAND 买入 2% 和卖出 2% 交易费，以及金库转售的 3% 版税。这些资金用于回购 PAPERHAND。地址及其余额都公开在 $PAPERHAND 页面。",
+  "faq.15.q":"$PAPERHAND 有交易费吗？",
+  "faq.15.a":"有，买入 2%、卖出 2%。以 ETH 进入金库地址，与金库罚金和版税一起用于回购。",
+  "head.portfolio":"你持有的每一个金库，以及它们此刻的价值。",
+  "head.assets":"可锁仓的资产，价格来自金库结算所用的同一批预言机。",
+  "head.token":"协议赚了什么、放在哪里、又回购了什么。",
+  "head.docs":"金库从头到尾如何运作，以及大家最先问到的问题。",
+  "msg.needAmount":"请输入锁仓数量。",
+  "msg.needRange":"请设置价格区间的上下沿。",
+  "msg.badRange":"区间上沿必须高于下沿。",
+  "msg.belowSpot":"区间起点必须等于或高于 {p}。",
+  "msg.noWallet":"当前浏览器未检测到钱包。",
+  "msg.approving":"正在授权 {s}", "msg.locking":"正在锁定 {a} {s}",
+  "msg.locked":"金库 #{id} 已开启。", "msg.lockedLive":"金库已开启。",
+  "msg.claiming":"领取中", "msg.claimed":"已领取 {a} {s}。",
+  "msg.closing":"关闭中", "msg.closed":"金库已关闭。返还 {a} {s}，扣除 {p} {s}。",
+  "msg.badAddress":"地址格式不正确。",
+  "msg.sending":"正在转出金库 #{id}", "msg.sent":"金库已转给 {a}。",
+  "msg.connectFirst":"请先连接钱包。",
+  "err.declined":"已取消签名",
+  "err.TreasuryNotSet":"合约已部署但尚未配置，在设置金库地址之前无法开仓。",
+  "err.TokenNotAllowed":"该代币尚未加入白名单。",
+  "err.NoPrice":"当前无法获取该代币的可用价格。",
+  "err.RangeBelowMarket":"区间起点必须等于或高于当前价格。",
+  "err.BadRange":"区间上沿必须高于下沿。",
+  "err.NotHolder":"这个金库属于另一个钱包。",
+  "err.NothingToClaim":"当前价格下还没有可领取的部分。",
+  "err.ZeroAmount":"收到的数量为零。",
+  "err.stale":"价格数据已过期。股票预言机在非交易时段会暂停更新。",
+  "err.belowSpot":"区间起点必须等于或高于当前价格。",
+  "err.notAllowed":"该代币尚未加入白名单。",
+  "err.sequencer":"链的排序器正在恢复，请几分钟后再试。",
+  "err.network":"钱包在操作过程中切换了网络，请刷新页面。", "err.generic":"交易失败",
+  "footer":"Robinhood Chain 上的非托管金库。没有任何管理员密钥可以转移、没收或解锁存款。"
+}
+};
+/* Paperhand agent on Comfy, 0G. These override the base strings above. */
+Object.assign(I18N.en, {
+  "nav.guide":"Test guide",
+  "test.chip":"Test version",
+  "test.bar":"<b>Test version.</b> Contracts are not live: prices, balances and vaults are simulated in your browser.",
+  "test.soon":"Live on 0G: coming soon",
+  "test.how":"How to test", "test.reset":"Reset test",
+  "msg.reset":"Test data reset. Fresh balances, no vaults.",
+  "msg.connected":"Wallet connected on 0G Mainnet. Nothing will be signed in the test version.",
+  "msg.chainAdded":"0G Mainnet is in your wallet.",
+  "guide.title":"Test guide",
+  "head.guide":"Five steps to try Paperhand before the contracts go live.",
+  "guide.onChain":"On 0G Mainnet", "guide.wrongChain":"Wrong network", "guide.noWallet":"No wallet connected",
+  "guide.addChain":"Add 0G to wallet",
+  "guide.chainInfo":"Network added:",
+  "guide.goLock":"Open Lock", "guide.goAssets":"Open Assets", "guide.goPortfolio":"Open Portfolio",
+  "guide.1.h":"Connect your wallet",
+  "guide.1.p":"MetaMask, Rabby or any browser wallet. Connecting adds 0G Mainnet and switches to it. The test version never asks you to sign or send anything.",
+  "guide.2.h":"Lock a test token",
+  "guide.2.p":"You start with a simulated balance of five test tokens that stand in for tokens launched on Comfy. Pick one, set a range that starts above the current price, and lock. Your vault is minted as an NFT card.",
+  "guide.3.h":"Move the price",
+  "guide.3.p":"In Assets, nudge a price up or down, or type one in. Watch the vault fill: every move up through the range releases another slice, and a spike that falls back stays released.",
+  "guide.4.h":"Claim, send or close early",
+  "guide.4.p":"Open the vault in Portfolio. Claim what the price has released, send the NFT to another address, or close early and pay the penalty the agent set for that vault.",
+  "guide.5.h":"Start over whenever you like",
+  "guide.5.p":"Everything lives in this browser only. Reset brings back the starting balances and clears every vault.",
+  "guide.soon.h":"Coming soon",
+  "guide.soon.p":"The vault contract on 0G Mainnet, $PAPERHAND on Comfy, the agent's own vaults, and locking any token launched on Comfy. Follow @paperhandagent on X for the launch.",
+  "hero.h1":"Lock it until the price says otherwise.",
+  "hero.sub":"Test version. Lock simulated Comfy tokens and watch them come back as the price climbs.",
+  "form.previewNote":"This is the NFT card your vault mints, drawn by the same code the contract will use.",
+  "rpc.why":"The page cannot reach the 0G RPC from where it is running. Serve this file over http, from any static host, and the same code reads the chain live.",
+  "assets.real":"Test tokens only. They stand in for tokens launched on Comfy and have no address. Use the arrows to move a price and see what a vault does. At launch, prices are read from Comfy onchain.",
+  "assets.testToken":"Test token", "assets.comfy":"Comfy", "assets.live":"Simulated prices",
+  "head.assets":"What can be locked. In the test version, you set the prices.",
+  "nft.penalty":"Agent penalty",
+  "nft.exitHint":"Closing now returns {r} {s} and gives up {p} {s}, the {rate} penalty the agent set for this vault.",
+  "nft.confirmExit":"Close this vault early?", "nft.exitNow":"Close and pay {rate}",
+  "nft.sell.cta":"List the NFT",
+  "token.pre":"Coming soon",
+  "token.fees":"Comfy trade fee", "token.feesVal":"{b}%, {s}% to the agent",
+  "token.addr.treasurySub":"penalties and agent gains",
+  "token.fund.h":"How the buyback is funded",
+  "token.fund.fees":"of the 1% fee on every $PAPERHAND trade goes to the agent, which buys Comfy tokens and locks them in vaults.",
+  "token.fund.agentB":"Penalties",
+  "token.fund.penalty":"set by the agent when someone closes a vault early. Charged on the locked part only.",
+  "token.fund.gainsB":"Gains",
+  "token.fund.royalty":"from the agent's own vaults as their prices climb and they unlock.",
+  "token.h1":"What the token does",
+  "token.p1":"$PAPERHAND is the agent's token on Comfy. Its creator fees pay the agent, which buys tokens launched on Comfy and locks them in NFT vaults behind a price range. As those prices climb the vaults unlock, and the gains, plus every early exit penalty, buy back $PAPERHAND and burn it.",
+  "token.note":"Test version. Price, supply and burns are published when the contracts go live on 0G.",
+  "token.mkt.h":"Buy vaults below their value",
+  "token.mkt.p1":"Someone who wants out early can close and pay the agent's penalty on what is still locked, or sell the NFT for less than its full value. The buyer gets the tokens at a discount, plus the unlock schedule.",
+  "token.mkt.p2":"A vault never rationally trades below its close value, since the buyer could close it right away. The discount is bounded, shown on every card, and shrinks as the vault matures.",
+  "token.mkt.cta":"Vault marketplace",
+  "link.site":"Website", "link.comfy":"Comfy", "link.contract":"Vault contract", "link.paperhand":"$PAPERHAND",
+  "docs.idea.p":"People rarely sell too early for lack of information. They sell too early because the decision gets made at the worst moment. Paperhand moves that decision to a calm one: you set the range once, and the price carries it out. Its agent does the same with its own money, on Comfy, on 0G.",
+  "docs.agent.h":"The agent",
+  "docs.agent.p":"Paperhand is an agent launched on Comfy. The creator share of every $PAPERHAND trade fee lands in its wallet. It spends that on tokens launched on Comfy, locks each buy in an NFT vault with a price range, and only sells as the price climbs through it. Gains buy back and burn $PAPERHAND.",
+  "docs.example.p":"Lock 100,000 COZY at $0.0042 with a range from $0.005 to $0.012. At $0.0085 the price has covered half the range, so 50,000 COZY are yours to claim. At $0.012 all of it is free. Claim as often as you like.",
+  "docs.exit.p":"You can close a vault at any time. The part already released comes back whole. The part still locked pays a penalty the agent sets from the vault's parameters, and the app shows it before you confirm. In the test version: 10% base, up to 20% more for wide ranges, fading to zero at 700 days.",
+  "docs.treasury.p":"One address receives what the protocol earns: early exit penalties in the locked tokens, and the gains from the agent's own vaults. It is spent buying back $PAPERHAND, which is burned.",
+  "docs.mature.p":"A vault that is 700 days old closes with no penalty at all, whatever the price did. If the market never reaches your range, you wait it out and the deposit comes back whole.",
+  "docs.price.h":"Where prices come from",
+  "docs.price.p":"From Comfy onchain, on 0G. In the test version you set every price yourself in the Assets tab.",
+  "docs.custody.p":"The contract holds them, and only the holder of the vault NFT can take them out. No admin key can move, seize or unlock a deposit, and a vault's terms never change once it is open.",
+  "docs.market.p":"A holder who wants out can close and pay the agent's penalty on the locked part, or sell the NFT. Any price above the close value beats the penalty for the seller, and the buyer gets the tokens below value plus the unlock schedule.",
+  "docs.cost.p":"Opening a vault costs a small fee in $PAPERHAND, burned on the spot. In the test version vaults are free. Claiming, sending and closing cost nothing beyond gas.",
+  "faq.1.a":"Your tokens stay locked until the vault is 700 days old, then you close it for free. You can also leave earlier and pay the agent's penalty on the locked part, or sell the NFT.",
+  "faq.2.a":"No. The terms are fixed at mint, which is what lets a buyer trust what they see. Open a second vault instead.",
+  "faq.3.q":"How does the agent set the penalty?",
+  "faq.3.a":"From the vault's own parameters, and the app shows the number before you confirm. In this test version the model is simple: 10% base, up to +20% the wider the range, fading to zero as the vault reaches 700 days.",
+  "faq.4.q":"Where does the penalty go?",
+  "faq.4.a":"To the treasury, with the gains from the agent's vaults. The treasury buys back $PAPERHAND and burns it.",
+  "faq.5.a":"What the spike released stays released. The vault keeps the highest price it has seen and never gives it back.",
+  "faq.6.q":"Which tokens can I lock?",
+  "faq.6.a":"Any token launched on Comfy, once the contracts are live. The test version uses five simulated tokens.",
+  "faq.7.a":"No. There is no function that moves, seizes or unlocks a deposit, no upgradeable proxy, and no admin override. Only the NFT holder can claim or close.",
+  "faq.8.q":"Is anything on chain in the test version?",
+  "faq.8.a":"No. Connecting adds 0G Mainnet to your wallet, but nothing is signed or sent. Balances, prices and vaults live in this browser only.",
+  "faq.9.q":"Can I sell my vault?",
+  "faq.9.a":"Yes, it is an NFT. The buyer receives the whole position. The marketplace link goes live with the contracts.",
+  "faq.10.a":"Somewhere between what closing it pays today and the full value of the tokens inside. The app shows both numbers on every vault.",
+  "faq.11.q":"What does the agent do with its gains?",
+  "faq.11.a":"It buys back $PAPERHAND and burns it. The more the agent's vaults unlock, the more supply is removed.",
+  "faq.12.q":"Is the contract audited?",
+  "faq.12.a":"Not yet, and it is not deployed yet either. That is why this is a test version. Start with amounts you are comfortable with once it is live.",
+  "docs.links.p":"The website, Comfy, and where the project posts. Contracts appear here once deployed.",
+  "err.stale":"No usable price for that token right now.",
+  "form.costTest":"Free in the test version", "token.tba":"Soon",
+  "footer":"Test version on 0G. Contracts are not deployed yet, nothing here touches the chain."
+});
+Object.assign(I18N.zh, {
+  "nav.guide":"测试指南",
+  "test.chip":"测试版",
+  "test.bar":"<b>测试版。</b>合约尚未上线：价格、余额和金库都只在你的浏览器里模拟。",
+  "test.soon":"0G 主网：即将上线",
+  "test.how":"如何测试", "test.reset":"重置测试",
+  "msg.reset":"测试数据已重置：余额恢复，金库清空。",
+  "msg.connected":"钱包已连接到 0G 主网。测试版不会要求任何签名。",
+  "msg.chainAdded":"0G 主网已添加到你的钱包。",
+  "guide.title":"测试指南",
+  "head.guide":"合约上线前，五步体验 Paperhand。",
+  "guide.onChain":"已在 0G 主网", "guide.wrongChain":"网络不对", "guide.noWallet":"未连接钱包",
+  "guide.addChain":"把 0G 添加到钱包",
+  "guide.chainInfo":"添加的网络：",
+  "guide.goLock":"打开锁仓", "guide.goAssets":"打开资产", "guide.goPortfolio":"打开持仓",
+  "guide.1.h":"连接钱包",
+  "guide.1.p":"MetaMask、Rabby 或任何浏览器钱包。连接时会添加并切换到 0G 主网。测试版从不要求签名或发送交易。",
+  "guide.2.h":"锁定一个测试代币",
+  "guide.2.p":"你一开始会拿到五种测试代币的模拟余额，它们代表在 Comfy 上发行的代币。选一个，设定一个高于当前价格的区间，然后锁定。金库会以 NFT 卡片的形式铸造。",
+  "guide.3.h":"调整价格",
+  "guide.3.p":"在资产页上调或下调价格，或直接输入。看着金库被填满：价格每向上走一段就释放一部分，冲高回落后已释放的部分依然算数。",
+  "guide.4.h":"领取、转让或提前关闭",
+  "guide.4.p":"在持仓里打开金库。领取价格已释放的部分，把 NFT 发送到其他地址，或者提前关闭并支付智能体为该金库设定的罚金。",
+  "guide.5.h":"随时重来",
+  "guide.5.p":"所有数据只存在这个浏览器里。重置会恢复初始余额并清空所有金库。",
+  "guide.soon.h":"即将上线",
+  "guide.soon.p":"0G 主网上的金库合约、Comfy 上的 $PAPERHAND、智能体自己的金库，以及锁定任何在 Comfy 上发行的代币。关注 X 上的 @paperhandagent 获取上线消息。",
+  "hero.sub":"测试版。锁定模拟的 Comfy 代币，看它们随价格上涨一点点回到你手里。",
+  "form.previewNote":"这是你的金库将铸造的 NFT 卡片，由合约将来使用的同一套代码绘制。",
+  "assets.real":"仅为测试代币，代表在 Comfy 上发行的代币，没有合约地址。用箭头调整价格，看看金库会怎样。上线后价格直接读取 Comfy 链上数据。",
+  "assets.testToken":"测试代币", "assets.comfy":"Comfy", "assets.live":"模拟价格",
+  "head.assets":"可以锁定的代币。测试版里，价格由你来定。",
+  "nft.penalty":"智能体罚金",
+  "nft.exitHint":"现在关闭将返还 {r} {s}，并付出 {p} {s}，即智能体为该金库设定的 {rate} 罚金。",
+  "nft.confirmExit":"提前关闭这个金库？", "nft.exitNow":"关闭并支付 {rate}",
+  "nft.sell.cta":"挂单出售 NFT",
+  "token.pre":"即将上线",
+  "token.fees":"Comfy 交易手续费", "token.feesVal":"{b}%，其中 {s}% 归智能体",
+  "token.addr.treasurySub":"罚金与智能体收益",
+  "token.fund.h":"回购资金从哪来",
+  "token.fund.fees":"的 $PAPERHAND 交易手续费（1%）归智能体，用于买入 Comfy 代币并锁进金库。",
+  "token.fund.agentB":"罚金",
+  "token.fund.penalty":"有人提前关闭金库时由智能体设定，只对仍锁定的部分收取。",
+  "token.fund.gainsB":"收益",
+  "token.fund.royalty":"来自智能体自己的金库，价格上涨后逐步解锁。",
+  "token.p1":"$PAPERHAND 是这个智能体在 Comfy 上的代币。创作者手续费支付给智能体，智能体买入在 Comfy 上发行的代币，并锁进带价格区间的 NFT 金库。价格上涨、金库解锁后，收益和所有提前退出的罚金都用于回购并销毁 $PAPERHAND。",
+  "token.note":"测试版。价格、供应量和销毁数据将在合约部署到 0G 后公布。",
+  "token.mkt.h":"以低于价值的价格买入金库",
+  "token.mkt.p1":"想提前退出的人可以关闭金库并为仍锁定的部分支付智能体罚金，也可以低价出售 NFT。买家以折扣价拿到代币，外加解锁计划。",
+  "token.mkt.p2":"金库的成交价理性上不会低于其关闭价值，因为买家可以立刻关闭。折扣有上限，每张卡片上都能看到，并随金库临近到期而缩小。",
+  "token.mkt.cta":"金库市场",
+  "link.site":"官网", "link.comfy":"Comfy", "link.contract":"金库合约", "link.paperhand":"$PAPERHAND",
+  "docs.agent.h":"智能体",
+  "docs.agent.p":"Paperhand 是在 Comfy 上发行的智能体。每笔 $PAPERHAND 交易手续费中的创作者分成进入它的钱包。它用这笔钱买入在 Comfy 上发行的代币，把每笔买入锁进带价格区间的 NFT 金库，只在价格穿过区间上涨时卖出。收益用于回购并销毁 $PAPERHAND。",
+  "docs.example.p":"以 $0.0042 锁定 100,000 COZY，区间 $0.005 到 $0.012。价格到 $0.0085 时走完了一半区间，你可以领取 50,000 COZY。到 $0.012 时全部释放。随时可以领取。",
+  "docs.exit.p":"你可以随时关闭金库。已释放的部分全额返还，仍锁定的部分支付智能体根据金库参数设定的罚金，确认前应用会先显示。测试版规则：基础 10%，区间越宽最多再加 20%，到 700 天时降为零。",
+  "docs.treasury.p":"协议的收入都进入同一个地址：以被锁代币支付的提前退出罚金，以及智能体金库的收益。这些资金用于回购 $PAPERHAND 并销毁。",
+  "docs.mature.p":"金库满 700 天后可免罚金关闭，无论价格如何。如果市场始终没到你的区间，等到期即可全额取回。",
+  "docs.price.p":"直接读取 0G 上的 Comfy 链上数据。测试版里，所有价格都由你在资产页设定。",
+  "docs.cost.p":"开仓需要少量 $PAPERHAND，当场销毁。测试版免费。领取、转让和关闭除 gas 外不收费。",
+  "faq.1.a":"代币会一直锁到金库满 700 天，之后可免费关闭。你也可以提前退出，为锁定部分支付智能体罚金，或者出售 NFT。",
+  "faq.3.q":"智能体如何设定罚金？",
+  "faq.3.a":"根据金库自身的参数，确认前应用会先显示具体数字。测试版的模型很简单：基础 10%，区间越宽最多再加 20%，随金库接近 700 天逐步降到零。",
+  "faq.4.a":"进入协议金库，与智能体金库的收益一起用于回购并销毁 $PAPERHAND。",
+  "faq.6.q":"可以锁定哪些代币？",
+  "faq.6.a":"合约上线后，任何在 Comfy 上发行的代币都可以。测试版使用五种模拟代币。",
+  "faq.8.q":"测试版里有任何链上操作吗？",
+  "faq.8.a":"没有。连接钱包会把 0G 主网添加到钱包，但不会签名或发送任何交易。余额、价格和金库只存在这个浏览器里。",
+  "faq.9.a":"可以，它是一个 NFT，买家会得到完整仓位。市场链接将随合约一同上线。",
+  "faq.11.q":"智能体如何使用收益？",
+  "faq.11.a":"回购 $PAPERHAND 并销毁。智能体的金库解锁得越多，被移除的供应量就越多。",
+  "faq.12.q":"合约经过审计了吗？",
+  "faq.12.a":"还没有，而且也还没部署，所以现在是测试版。上线后请从你能接受的金额开始。",
+  "docs.links.p":"官网、Comfy 以及项目发布消息的地方。合约部署后会显示在这里。",
+  "docs.market.p":"想提前离场的持有人可以关闭金库并为锁定部分支付智能体罚金，也可以卖掉 NFT。对卖家来说，任何高于关闭价值的价格都比罚金划算；买家则以低于价值的价格拿到代币和解锁计划。",
+  "err.stale":"该代币当前没有可用价格。",
+  "rpc.why":"页面在当前环境下无法访问 0G 的 RPC。把这个文件用任意静态托管以 http 方式提供，同一套代码就能实时读取链上数据。",
+  "form.costTest":"测试版免费", "token.tba":"即将上线",
+  "footer":"0G 上的测试版。合约尚未部署，这里的一切都不会上链。"
+});
+
+let lang = localStorage.getItem("ph-lang") || ((navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en");
+const t = (k, vars) => {
+  let s = (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k;
+  if (vars) for (const [key, val] of Object.entries(vars)) s = s.split("{" + key + "}").join(val);
+  return s;
+};
+
+/* ====================================================================== abi */
+const VAULT_ABI = [
+  "function open(address token,uint256 amount,uint256 priceLow,uint256 priceHigh) returns (uint256)",
+  "function claim(uint256 id) returns (uint256)",
+  "function close(uint256 id) returns (uint256,uint256)",
+  "function poke(uint256 id)",
+  "function priceOrZero(address token) view returns (bool ok,uint256 p)",
+  "function claimable(uint256 id) view returns (uint256)",
+  "function previewClose(uint256 id) view returns (uint256 returned,uint256 penalty)",
+  "function freeToClose(uint256 id) view returns (bool)",
+  "function maturesAt(uint256 id) view returns (uint256)",
+  "function oracleDead(address token) view returns (bool)",
+  "function creationFee() view returns (uint256)",
+  "function paperhand() view returns (address)",
+  "function penaltyRecipient() view returns (address)",
+  "function FEE_SINK() view returns (address)",
+  "function totalSupply() view returns (uint256)",
+  "function vaultsOf(address holder) view returns (uint256[])",
+  "function nextVaultId() view returns (uint256)",
+  "function safeTransferFrom(address from,address to,uint256 id)",
+  "function vaults(uint256) view returns (address token,uint64 createdAt,uint128 deposited,uint128 withdrawn,uint128 priceLow,uint128 priceHigh,uint128 highWater)",
+  // custom errors, so a revert comes back with a name instead of "execution reverted"
+  "error NotHolder()", "error TokenNotAllowed()", "error BadRange()", "error RangeBelowMarket()",
+  "error ZeroAmount()", "error NothingToClaim()", "error NoPrice()", "error FeeOutOfRange()",
+  "error AlreadySet()", "error ZeroAddress()", "error Overflow()", "error TreasuryNotSet()"
+];
+const ERC20_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function allowance(address,address) view returns (uint256)",
+  "function approve(address,uint256) returns (bool)",
+  "function totalSupply() view returns (uint256)"
+];
+/* Chainlink proxy, the same interface the vault reads */
+const FEED_ABI = [
+  "function decimals() view returns (uint8)",
+  "function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)"
+];
+/* Robinhood stock token extras, used to back out the underlying share price */
+const STOCK_ABI = [
+  "function uiMultiplier() view returns (uint256)",
+  "function oraclePaused() view returns (bool)"
+];
+
+/* ==================================================================== utils */
+const $ = id => document.getElementById(id);
+const WAD = 10n ** 18n;
+const toWad = s => { const n = (s ?? "").toString().trim(); if (!n || isNaN(Number(n))) return null;
+  try { return ethers.parseUnits(n, 18); } catch { return null; } };
+const fromWad = v => Number(ethers.formatUnits(v, 18));
+const locale = () => lang === "zh" ? "zh-CN" : "en-US";
+const pxDigits = n => { const a = Math.abs(n); return a >= 100 ? 2 : a >= 1 ? 3 : a >= 0.01 ? 4 : a >= 0.0001 ? 6 : 8; };
+const usdN = n => "$" + n.toLocaleString(locale(),{minimumFractionDigits:Math.min(2,pxDigits(n)),maximumFractionDigits:pxDigits(n)});
+const usd = v => v == null ? "" : usdN(fromWad(v));
+const usd0 = n => "$" + n.toLocaleString(locale(),{maximumFractionDigits:0});
+const usd3 = n => "$" + n.toLocaleString(locale(),{minimumFractionDigits:2,maximumFractionDigits:n !== 0 && Math.abs(n) < 1 ? 4 : 2});
+const qty = (v,d=18) => Number(ethers.formatUnits(v,d)).toLocaleString(locale(),{maximumFractionDigits:4});
+const short = a => a.slice(0,6) + "\u2026" + a.slice(-4);
+const day = ts => new Date(Number(ts) * 1000).toLocaleDateString(locale(), {year:"numeric",month:"short",day:"numeric"});
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let statusTimer;
+function say(msg, bad=false){
+  const el = $("status");
+  el.textContent = msg; el.classList.toggle("bad", bad); el.classList.add("show");
+  clearTimeout(statusTimer); statusTimer = setTimeout(()=>el.classList.remove("show"), bad ? 6000 : 3400);
+}
+function reason(e){
+  // ethers decodes a known custom error into e.revert, which is the real cause
+  const named = e?.revert?.name || e?.info?.error?.data?.name;
+  if (named && I18N.en["err." + named]) return t("err." + named);
+  if (named) return named;
+  const s = e?.shortMessage || e?.info?.error?.message || e?.message || "";
+  if (/user rejected/i.test(s)) return t("err.declined");
+  if (/TreasuryNotSet/.test(s)) return t("err.TreasuryNotSet");
+  if (/StalePrice|NoPrice/.test(s)) return t("err.stale");
+  if (/RangeBelowSpot|RangeBelowMarket/.test(s)) return t("err.belowSpot");
+  if (/TokenNotAllowed/.test(s)) return t("err.notAllowed");
+  if (/SequencerDown/.test(s)) return t("err.sequencer");
+  if (/network changed/i.test(s)) return t("err.network");
+  return s ? s.split("(")[0].slice(0,140) : t("err.generic");
+}
+function pctOf(low, high, price){
+  if (low == null || high == null || price == null || high <= low) return null;
+  if (price <= low) return 0;
+  if (price >= high) return 100;
+  return Number((price - low) * 10000n / (high - low)) / 100;
+}
+
+/* =================================================================== art
+   A line for line port of PaperhandRenderer.sol. Integer maths, BigInt only,
+   so the card drawn here is byte for byte the card the contract serves to
+   OpenSea and to every wallet. Verified against the on-chain output.         */
+/* =================================================================== art
+   A line for line port of PaperhandRenderer.sol. Integer maths, BigInt only,
+   so the card drawn here is byte for byte the card the contract serves to
+   OpenSea and to every wallet. Verified against the on-chain output.         */
+const ART_PAL = [
+  ["#8C73F0","#5A3FD0","#3F2A9E","#EFECFB"], ["#4A7A9B","#2F5B78","#204257","#E9EFF4"],
+  ["#B8764F","#94543A","#6E3C28","#F5ECE5"], ["#7C5C93","#5B3F6E","#432C52","#F0EBF4"],
+  ["#3E8A8F","#23666B","#184B50","#E7F1F2"], ["#7E8C46","#5C6B2F","#424E21","#F0F2E7"],
+  ["#A8563F","#82382A","#5F281D","#F6EAE6"], ["#5A5FA0","#3D427C","#2B2F5C","#EBECF4"]
+];
+const artFixed2 = (v, d) => {
+  const u = 10n ** BigInt(d), whole = v / u;
+  if (whole === 0n && v !== 0n){
+    const small = ((v % u) * 1000000n) / u;
+    return small === 0n ? "0.000001" : "0." + small.toString().padStart(6, "0");
+  }
+  const f = ((v % u) * 100n) / u;
+  return whole.toString() + "." + (f < 10n ? "0" : "") + f.toString();
+};
+const artFraction = (lo, hi, m) => m <= lo ? 0n : m >= hi ? WAD : ((m - lo) * WAD) / (hi - lo);
+const artPoly = (p, fill) => '<polygon points="' + p.map(String).join(" ") + '" fill="' + fill + '"/>';
+
+function palFor(symbol){
+  return ART_PAL[Number(BigInt(ethers.keccak256(ethers.toUtf8Bytes(symbol))) % 8n)];
+}
+
+/* A wide card built for sharing: the same tower, the numbers that matter, and
+   nothing that needs a server to render. */
+function pnlCard(v, up){
+  const [top, side, dark, wash] = palFor(v.symbol);
+  const pct = Math.round(v.pct);
+  const filled = Math.round(pct * 11 / 100);
+  let tower = '<ellipse cx="962" cy="410" rx="104" ry="26" fill="#16132B" opacity="0.06"/>';
+  for (let i = 0; i < 11; i++){
+    const w = Math.round(92 * (1 - i * 0.013)), h = Math.round(w / 2);
+    const x = 962, y = 388 - i * 27, th = 14;
+    const [a, b, c] = i < filled ? [top, side, dark] : ["#EFECF6", "#E2DEEE", "#D3CEE3"];
+    tower += `<polygon points="${x-w} ${y} ${x} ${y+h} ${x} ${y+h+th} ${x-w} ${y+th}" fill="${b}"/>` +
+             `<polygon points="${x+w} ${y} ${x} ${y+h} ${x} ${y+h+th} ${x+w} ${y+th}" fill="${c}"/>` +
+             `<polygon points="${x} ${y-h} ${x+w} ${y} ${x} ${y+h} ${x-w} ${y}" fill="${a}"/>`;
+  }
+  const stat = (x, label, value) =>
+    `<text x="${x}" y="470" font-size="15" letter-spacing="1.1" fill="#726E86">${esc(label.toUpperCase())}</text>` +
+    `<text x="${x}" y="506" font-size="26" font-weight="700" fill="#16132B">${esc(value)}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="100%">
+    <defs><linearGradient id="pb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="0.55" stop-color="#FBFAFD"/>
+      <stop offset="1" stop-color="${wash}"/></linearGradient></defs>
+    <rect width="1200" height="675" fill="url(#pb)"/>
+    <g font-family="system-ui,-apple-system,Segoe UI,sans-serif">
+      <text x="72" y="96" font-size="18" letter-spacing="2.4" fill="#726E86">PAPERHAND VAULT #${esc(v.id)}</text>
+      <text x="72" y="238" font-size="112" font-weight="700" letter-spacing="-4" fill="${side}">${esc((up.pct >= 0 ? "+" : "") + up.pct.toFixed(2) + "%")}</text>
+      <text x="72" y="292" font-size="26" fill="#16132B">${esc(t("pnl.line", { s: v.symbol, p: usd(v.high) }))}</text>
+      <text x="72" y="332" font-size="19" fill="#726E86">${esc(t("pnl.sub", { pct: pct + "%" }))}</text>
+      <text x="72" y="364" font-size="19" fill="#726E86">${esc(t("pnl.vs", { pct: (up.vsExit >= 0 ? "+" : "") + up.vsExit.toFixed(2) + "%" }))}</text>
+      ${tower}
+      <line x1="72" y1="416" x2="1128" y2="416" stroke="#E4E1EE"/>
+      ${stat(72, t("pnl.locked"), qty(v.deposited - v.withdrawn, v.dec) + " " + v.symbol)}
+      ${stat(352, t("pnl.now"), usd3(up.now))}
+      ${stat(632, t("pnl.exit"), usd3(up.liquid))}
+      ${stat(912, t("pnl.full"), usd3(up.full))}
+      <text x="72" y="600" font-size="19" fill="#726E86">${esc(usd(v.low) + "  \u2192  " + usd(v.high))}</text>
+      <text x="1128" y="600" font-size="19" font-weight="600" fill="${side}" text-anchor="end">@paperhandagent</text>
+    </g></svg>`;
+}
+
+async function downloadCard(svg, name){
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
+    });
+    const c = document.createElement("canvas");
+    c.width = 2400; c.height = 1350;
+    c.getContext("2d").drawImage(img, 0, 0, 2400, 1350);
+    const blob = await new Promise(r => c.toBlob(r, "image/png"));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function openPnlCard(v, up){
+  const svg = pnlCard(v, up);
+  const wrap = document.createElement("div");
+  wrap.className = "zoom wide";
+  wrap.innerHTML = `<div class="pnl" onclick="event.stopPropagation()">
+    <div class="shot">${svg}</div>
+    <div class="acts">
+      <button class="btn sm" data-d="1">${esc(t("pnl.download"))}</button>
+      <a class="btn sm ghost" target="_blank" rel="noopener" href="${LINKS.x ? "https://x.com/intent/post?text=" +
+        encodeURIComponent(t("pnl.text", { id: v.id, s: v.symbol, pct: (up.pct >= 0 ? "+" : "") + up.pct.toFixed(2) + "%", p: usd(v.high) }) +
+        " @paperhandagent") : "#"}">${esc(t("pnl.share"))}</a>
+    </div></div>`;
+  wrap.onclick = () => wrap.remove();
+  wrap.querySelector('[data-d]').onclick = () => downloadCard(svg, `paperhand-vault-${v.id}.png`);
+  document.body.appendChild(wrap);
+}
+
+function vaultCard({ id, symbol, dec = 18, deposited, withdrawn = 0n, low, high, highWater, matured = false }){
+  id = BigInt(id);
+  const full = deposited - withdrawn;
+  const pct = (artFraction(low, high, highWater) * 100n) / WAD;
+  const released = (full * pct) / 100n;                    // mirrors the vault's own maths
+  const returned = matured ? full : released + ((full - released) * 7000n) / 10000n;
+  const discount = full === 0n ? 0n : ((full - returned) * 100n) / full;
+  const span = low === 0n ? 0n : ((high - low) * 100n) / low;
+  const status = matured ? "MATURED" : pct === 0n ? "LOCKED" : pct >= 100n ? "RELEASED" : "RELEASING";
+  const seed = BigInt(ethers.keccak256(ethers.solidityPacked(["string","uint256","uint128","uint128"], [symbol, id, low, high])));
+  const [top, side, dark, wash] = ART_PAL[Number(BigInt(ethers.keccak256(ethers.toUtf8Bytes(symbol))) % 8n)];
+  const filled = (pct * 11n + 50n) / 100n;
+  const taper = (seed >> 15n) % 26n;
+  const tilt = (seed >> 60n) % 5n;
+  const bw = BigInt(status.length) * 7n + 18n;
+
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420" width="100%">' +
+    '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#FFFFFF"/><stop offset="0.5" stop-color="#FBFAFD"/>' +
+    '<stop offset="1" stop-color="' + wash + '"/></linearGradient></defs>' +
+    '<rect width="320" height="420" rx="18" fill="url(#s)"/>' +
+    '<rect x="0.5" y="0.5" width="319" height="419" rx="17.5" fill="none" stroke="#E4E1EE"/>' +
+    '<g font-family="system-ui,-apple-system,Segoe UI,sans-serif">' +
+    '<text x="26" y="42" font-size="11.5" letter-spacing="1.5" fill="#726E86">PAPERHAND VAULT</text>' +
+    '<text x="294" y="42" font-size="11.5" fill="#726E86" text-anchor="end">#' + id + "</text>" +
+    '<rect x="26" y="52" width="' + bw + '" height="19" rx="9.5" fill="' + wash + '"/>' +
+    '<text x="' + (26n + bw / 2n) + '" y="65" font-size="9.5" letter-spacing="1.1" font-weight="700"' +
+    ' text-anchor="middle" fill="' + side + '">' + status + "</text>" +
+    '<g transform="rotate(' + (tilt >= 2n ? "" : "-") + (tilt >= 2n ? tilt - 2n : 2n - tilt) +
+    ' 160 180)"><ellipse cx="160" cy="287" rx="66" ry="17" fill="#16132B" opacity="0.055"/>';
+  for (let i = 0n; i < 11n; i++){
+    const [t2, s2, d2] = i < filled ? [top, side, dark] : ["#EFECF6","#E2DEEE","#D3CEE3"];
+    const w = (58n * (1000n - i * taper)) / 1000n, h = w / 2n;
+    const x = 155n + ((seed >> (i * 5n)) % 11n), y = 268n - i * 17n;
+    s += artPoly([x - w, y, x, y + h, x, y + h + 9n, x - w, y + 9n], s2) +
+         artPoly([x + w, y, x, y + h, x, y + h + 9n, x + w, y + 9n], d2) +
+         artPoly([x, y - h, x + w, y, x, y + h, x - w, y], t2);
+  }
+  s += "</g>" +
+    '<text x="26" y="330" font-size="27" font-weight="700" fill="#16132B">' + artFixed2(full, dec) + "</text>" +
+    '<text x="26" y="354" font-size="15" fill="#726E86">' + symbol + "</text>" +
+    '<text x="294" y="330" font-size="20" font-weight="700" fill="' + side + '" text-anchor="end">' + pct + "%</text>" +
+    '<text x="294" y="354" font-size="12" fill="#726E86" text-anchor="end">released</text>' +
+    '<rect x="26" y="366" width="268" height="5" rx="2.5" fill="#ECE9F4"/>' +
+    '<rect x="26" y="366" width="' + ((268n * pct) / 100n) + '" height="5" rx="2.5" fill="' + side + '"/>' +
+    '<text x="26" y="396" font-size="13.5" fill="#726E86">$' + artFixed2(low, 18) + " to $" + artFixed2(high, 18) + "</text>" +
+    (withdrawn > 0n
+      ? '<text x="294" y="396" font-size="12.5" fill="#726E86" text-anchor="end">' + artFixed2(withdrawn, dec) + " claimed</text>"
+      : "") +
+    "</g></svg>";
+  return s;
+}
+
+function assetMark(symbol, size = 34){
+  const tk = CONFIG.TOKENS.find(x => x.symbol === symbol) || (symbol === "0G" ? { tint: "#16132B" } : null);
+  if (tk && tk.logo) return tk.logo;                 // a real logo URL in CONFIG always wins
+  const tint = tk ? tk.tint : "#16132B";
+  const len = symbol.length;
+  const fs = len <= 3 ? 15 : len === 4 ? 12 : 10;
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
+    '<rect width="48" height="48" rx="13" fill="' + tint + '"/>' +
+    '<rect x="0.6" y="0.6" width="46.8" height="46.8" rx="12.4" fill="none" stroke="#16132B" stroke-opacity=".14"/>' +
+    '<text x="24" y="' + (24 + fs * 0.36) + '" text-anchor="middle" letter-spacing="-.4"' +
+    ' font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="' + fs + '"' +
+    ' font-weight="700" fill="#FFFFFF">' + symbol + "</text></svg>";
+  return svg;
+}
+/* a real logo is an image, everything we draw ourselves is inlined, because a
+   strict page policy can refuse data: images but never inline markup */
+function markHTML(symbol, size = 34){
+  const tk = CONFIG.TOKENS.find(x => x.symbol === symbol) || null;
+  if (tk && tk.logo)
+    return '<img src="' + tk.logo + '" width="' + size + '" height="' + size + '" alt="" ' +
+           'onerror="this.replaceWith(document.createRange().createContextualFragment(assetMark(\'' +
+           symbol + '\',' + size + ')))" />';
+  return assetMark(symbol, size);
+}
+
+const explorer = {
+  token: a => CONFIG.EXPLORER + "/token/" + a,
+  address: a => CONFIG.EXPLORER + "/address/" + a
+};
+const ago = ts => {
+  if (!ts) return "";
+  const m = Math.max(0, Math.floor((Date.now() / 1000 - ts) / 60));
+  if (m < 60) return t("assets.minAgo", { n: m });
+  const h = Math.floor(m / 60);
+  return h < 48 ? t("assets.hourAgo", { n: h }) : t("assets.dayAgo", { n: Math.floor(h / 24) });
+};
+
+/* ============================================================ agent penalty
+   The live agent prices an early exit from the vault's own parameters. This
+   test version uses a plain, readable model so the behaviour can be tried:
+   10% base, up to +20% the wider the range (capped at a 200% wide range),
+   fading linearly to zero as the vault approaches 700 days. Only the part
+   still locked is ever charged. Returns basis points.                       */
+function agentPenalty(v){
+  if (!v || v.low == null || v.high == null || v.low === 0n) return 3000;
+  const width = Number((v.high - v.low) * 10000n / v.low) / 100;         // % above the bottom
+  const wide = Math.min(1, Math.max(0, width / 200));
+  const age = Math.max(0, Date.now() / 1000 - Number(v.createdAt || Date.now() / 1000));
+  const fade = Math.max(0, 1 - age / (700 * 86400));
+  return Math.round((1000 + 2000 * wide) * fade);
+}
+const bpsPct = b => (b / 100).toLocaleString(locale(), { maximumFractionDigits: 1 }) + "%";
+
+/* =================================================================== state */
+const testMode = CONFIG.TEST_MODE !== false;   // test version until the contracts are live
+let provider, signer, account, vault;
+let feeAmount = WAD, paperhandAddr = null;
+let vaults = [], selected = null, view = "lock", spotPrice = null;
+let testPrices = {}, testBalances = {}, testVaults = [], testTreasury = {}, testBurned = 0, testNextId = 1;
+
+function loadTestState(){
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("ph-test-state") || "{}"); } catch {}
+  testPrices = {}; testBalances = {}; testTreasury = {};
+  for (const tk of CONFIG.TOKENS){
+    testPrices[tk.symbol] = BigInt(saved.prices?.[tk.symbol] ?? ethers.parseUnits(String(tk.demo), 18));
+    testBalances[tk.symbol] = BigInt(saved.balances?.[tk.symbol] ?? ethers.parseUnits(String(tk.demoBalance), 18));
+    testTreasury[tk.symbol] = BigInt(saved.treasury?.[tk.symbol] ?? 0);
+  }
+  testVaults = (saved.vaults || []).map(v => ({ ...v,
+    deposited: BigInt(v.deposited), withdrawn: BigInt(v.withdrawn),
+    low: BigInt(v.low), high: BigInt(v.high), highWater: BigInt(v.highWater) }));
+  testNextId = saved.nextId || 1;
+  testBurned = saved.burned || 0;
+}
+function saveTestState(){
+  const enc = o => Object.fromEntries(Object.entries(o).map(([k,v]) => [k, v.toString()]));
+  localStorage.setItem("ph-test-state", JSON.stringify({
+    prices: enc(testPrices), balances: enc(testBalances), treasury: enc(testTreasury),
+    nextId: testNextId, burned: testBurned,
+    vaults: testVaults.map(v => ({ ...v, deposited:v.deposited.toString(), withdrawn:v.withdrawn.toString(),
+      low:v.low.toString(), high:v.high.toString(), highWater:v.highWater.toString() }))
+  }));
+}
+loadTestState();
+
+/* ================================================================== oracle
+   Raw JSON-RPC over fetch, so a failure can be named instead of swallowed.
+   One batched POST reads every feed, every multiplier, every pause flag.   */
+const FEED_IFACE = new ethers.Interface(FEED_ABI);
+const STOCK_IFACE = new ethers.Interface(STOCK_ABI);
+
+let rpcUrl = null;
+function currentRpc(){
+  if (rpcUrl) return rpcUrl;
+  let saved = null;
+  try { saved = localStorage.getItem("ph-rpc"); } catch {}
+  rpcUrl = saved || CONFIG.RPC;
+  return rpcUrl;
+}
+function setRpc(url){
+  rpcUrl = url || CONFIG.RPC;
+  try { url ? localStorage.setItem("ph-rpc", url) : localStorage.removeItem("ph-rpc"); } catch {}
+  feedCache.clear(); oracle.state = "idle";
+}
+
+const oracle = { state: "idle", detail: "", at: 0 };
+
+async function rpcBatch(calls){
+  const url = currentRpc();
+  if (!url) { oracle.state = "norpc"; return null; }
+  const body = calls.map((c, i) => ({ jsonrpc: "2.0", id: i, method: "eth_call", params: [c, "latest"] }));
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body.length === 1 ? body[0] : body)
+    });
+  } catch (e){
+    // fetch only throws like this when the request never left the page
+    oracle.state = "blocked";
+    oracle.detail = String(e && e.message || e);
+    return null;
+  }
+  if (res.status === 429){ oracle.state = "ratelimited"; return null; }
+  if (!res.ok){ oracle.state = "http"; oracle.detail = res.status + " " + res.statusText; return null; }
+  let json;
+  try { json = await res.json(); } catch { oracle.state = "http"; oracle.detail = "bad json"; return null; }
+  const arr = Array.isArray(json) ? json : [json];
+  if (arr[0] && arr[0].error){ oracle.state = "rpcerror"; oracle.detail = arr[0].error.message || ""; return null; }
+  const out = new Array(calls.length).fill(null);
+  for (const r of arr) if (r && typeof r.id === "number" && r.result) out[r.id] = r.result;
+  oracle.state = "ok"; oracle.detail = ""; oracle.at = Date.now();
+  return out;
+}
+
+const feedCache = new Map();
+
+/* Several parts of the page ask for prices at once on the first render. Without
+   this guard they each fire their own batch, and the losers of the race come
+   back empty, which is why a vault could show Unavailable while the assets tab
+   showed the price. One flight at a time, everyone waits for the same answer. */
+let feedsInFlight = null;
+function loadFeeds(force){
+  const ready = feedCache.size === CONFIG.TOKENS.length &&
+                [...feedCache.values()].every(v => Date.now() - v.at < 20000);
+  if (!force && ready) return Promise.resolve();
+  if (feedsInFlight) return feedsInFlight;
+  feedsInFlight = loadFeedsOnce(force).finally(() => { feedsInFlight = null; });
+  return feedsInFlight;
+}
+
+async function loadFeedsOnce(force){
+  const fresh = [...feedCache.values()].every(v => Date.now() - v.at < 20000);
+  if (!force && feedCache.size === CONFIG.TOKENS.length && fresh) return;
+
+  const calls = [];
+  const plan = [];
+  for (const tk of CONFIG.TOKENS){
+    if (tk.feed){
+      plan.push({ tk, kind: "price", i: calls.length });
+      calls.push({ to: tk.feed, data: FEED_IFACE.encodeFunctionData("latestRoundData") });
+      plan.push({ tk, kind: "dec", i: calls.length });
+      calls.push({ to: tk.feed, data: FEED_IFACE.encodeFunctionData("decimals") });
+    }
+    if (tk.address){
+      plan.push({ tk, kind: "paused", i: calls.length });
+      calls.push({ to: tk.address, data: STOCK_IFACE.encodeFunctionData("oraclePaused") });
+    }
+  }
+  const res = await rpcBatch(calls);
+  const now = Date.now();
+  for (const tk of CONFIG.TOKENS){
+    const d = { price: null, updatedAt: 0, paused: false, snapshot: false };
+    if (!res && tk.snapshot){            // the chain is unreachable from here
+      d.price = ethers.parseUnits(String(tk.snapshot), 18);
+      d.snapshot = true;
+    }
+    if (res){
+      const pick = k => { const e = plan.find(x => x.tk === tk && x.kind === k); return e ? res[e.i] : null; };
+      let dec = 8;
+      try { const raw = pick("dec"); if (raw) dec = Number(FEED_IFACE.decodeFunctionResult("decimals", raw)[0]); } catch {}
+      try {
+        const raw = pick("price");
+        if (raw){
+          const r = FEED_IFACE.decodeFunctionResult("latestRoundData", raw);
+          if (r[1] > 0n){ d.price = (r[1] * WAD) / (10n ** BigInt(dec)); d.updatedAt = Number(r[3]); }
+        }
+      } catch {}
+      try { const raw = pick("paused"); if (raw) d.paused = !!STOCK_IFACE.decodeFunctionResult("oraclePaused", raw)[0]; } catch {}
+    }
+    feedCache.set(tk.symbol, { at: now, data: d });
+  }
+}
+async function readFeed(tk){
+  await loadFeeds(false);
+  const hit = feedCache.get(tk.symbol);
+  return hit ? hit.data : null;
+}
+
+function ethersReader(){
+  try { return new ethers.JsonRpcProvider(currentRpc(), { chainId: 16661, name: "0g" }, { staticNetwork: true }); }
+  catch { return null; }
+}
+
+/* ====================================================================== api */
+const api = {
+  async spot(sym){
+    if (testMode) return testPrices[sym];
+    const tk = CONFIG.TOKENS.find(x => x.symbol === sym);
+    if (!tk) return null;
+    const f = await readFeed(tk);
+    return f ? f.price : null;
+  },
+  async list(){
+    if (testMode) return testVaults.map(v => decorate(v));
+    if (!vault || !account) return [];
+    const ids = await vault.vaultsOf(account);
+    const out = [];
+    for (const raw of ids){
+      const id = raw.toString();
+      const v = await vault.vaults(id);
+      const tk = CONFIG.TOKENS.find(x => x.address && x.address.toLowerCase() === v.token.toLowerCase());
+      let price = null, claimable = 0n;
+      // the feeds the assets tab already reads, then the vault itself as a fallback
+      if (tk) { try { price = await api.spot(tk.symbol); } catch {} }
+      if (price == null){
+        try { const [ok, p] = await vault.priceOrZero(v.token); if (ok) price = p; } catch {}
+      }
+      try { claimable = await vault.claimable(id); } catch {}
+      out.push(decorate({ id, symbol: tk?.symbol || short(v.token), dec: tk?.decimals ?? 18,
+        deposited: v.deposited, withdrawn: v.withdrawn, low: v.priceLow, high: v.priceHigh,
+        highWater: v.highWater, createdAt: Number(v.createdAt) }, price, claimable));
+    }
+    return out;
+  },
+  async create(sym, amount, low, high){
+    if (testMode){
+      const id = String(testNextId++);
+      testBalances[sym] -= amount;
+      testBurned += 1;
+      testVaults.push({ id, symbol: sym, dec: 18, deposited: amount, withdrawn: 0n,
+        low, high, highWater: testPrices[sym], createdAt: Math.floor(Date.now()/1000) });
+      saveTestState();
+      return id;
+    }
+    const tk = CONFIG.TOKENS.find(x => x.symbol === sym);
+    if (paperhandAddr && paperhandAddr !== ethers.ZeroAddress && feeAmount > 0n)
+      await ensureAllowance(paperhandAddr, feeAmount, "PAPERHAND");
+    await ensureAllowance(tk.address, amount, sym);
+    say(t("msg.locking", { a: qty(amount, tk.decimals), s: sym }));
+    await (await vault.open(tk.address, amount, low, high)).wait();
+    return null;
+  },
+  async claim(id){
+    const v = vaults.find(x => x.id === String(id));
+    if (testMode){
+      const raw = testVaults.find(x => x.id === String(id));
+      raw.withdrawn += v.claimable;
+      testBalances[raw.symbol] += v.claimable;
+      if (raw.withdrawn >= raw.deposited) testVaults = testVaults.filter(x => x.id !== raw.id);
+      saveTestState();
+      return v.claimable;
+    }
+    say(t("msg.claiming"));
+    await (await vault.claim(id)).wait();
+    return v.claimable;
+  },
+  async exit(id){
+    const v = vaults.find(x => x.id === String(id));
+    if (testMode){
+      const raw = testVaults.find(x => x.id === String(id));
+      const stillLocked = raw.deposited - raw.withdrawn - v.claimable;
+      const penalty = stillLocked * BigInt(agentPenalty(raw)) / 10000n;
+      const returned = v.claimable + stillLocked - penalty;
+      testBalances[raw.symbol] += returned;
+      testTreasury[raw.symbol] += penalty;
+      testVaults = testVaults.filter(x => x.id !== raw.id);
+      saveTestState();
+      return { returned, penalty };
+    }
+    const [returned, penalty] = await vault.previewClose(id);
+    say(t("msg.closing"));
+    await (await vault.close(id)).wait();
+    return { returned, penalty };
+  },
+  async send(id, to){
+    if (testMode){ testVaults = testVaults.filter(x => x.id !== String(id)); saveTestState(); return; }
+    say(t("msg.sending", { id }));
+    await (await vault.safeTransferFrom(account, to, id)).wait();
+  },
+  async stats(){
+    const perAsset = [];
+    let tvl = 0, treasury = 0;
+    for (const tk of CONFIG.TOKENS){
+      const price = await api.spot(tk.symbol);
+      let locked = 0n, cut = 0n;
+      if (testMode){
+        locked = testVaults.filter(v => v.symbol === tk.symbol).reduce((s,v) => s + (v.deposited - v.withdrawn), 0n);
+        cut = testTreasury[tk.symbol] || 0n;
+      } else if (CONFIG.VAULT && tk.address){
+        const erc = new ethers.Contract(tk.address, ERC20_ABI, provider || ethersReader());
+        try { locked = await erc.balanceOf(CONFIG.VAULT); } catch {}
+        try { cut = await erc.balanceOf(CONFIG.TREASURY); } catch {}
+      }
+      const p = price == null ? 0 : fromWad(price);
+      tvl += fromWad(locked) * p;
+      treasury += fromWad(cut) * p;
+      perAsset.push({ tk, price, locked, cut });
+    }
+    let open = testMode ? testVaults.length : null, totalEver = testMode ? testNextId - 1 : null;
+    if (!testMode && CONFIG.VAULT){
+      try {
+        const c = vault || new ethers.Contract(CONFIG.VAULT, VAULT_ABI, ethersReader());
+        const [ts, nx] = await Promise.all([c.totalSupply(), c.nextVaultId()]);
+        open = Number(ts); totalEver = Number(nx) - 1;
+      } catch {}
+    }
+    let burned = testMode ? testBurned : null;
+    if (!testMode && CONFIG.PAPERHAND){
+      try {
+        const erc = new ethers.Contract(CONFIG.PAPERHAND, ERC20_ABI, provider || ethersReader());
+        const sink = await vault.FEE_SINK();
+        burned = fromWad(await erc.balanceOf(sink));
+      } catch {}
+    }
+    const closed = open != null && totalEver != null ? totalEver - open : null;
+    return { perAsset, tvl, treasury, open, closed, totalEver, burned };
+  }
+};
+
+function decorate(v, price, claimable){
+  const spot = price !== undefined ? price : testPrices[v.symbol];
+  const highWater = spot != null && spot > v.highWater ? spot : v.highWater;
+  const pct = pctOf(v.low, v.high, highWater) ?? 0;
+  const unlocked = v.deposited * BigInt(Math.round(pct * 1e6)) / BigInt(100e6);
+  /* The contract's claimable() is a view, so it answers from the last high water
+     mark anyone wrote on chain. claim() raises that mark itself before paying,
+     so what you can actually take is the larger of the two: what is recorded,
+     and what today's price has released. */
+  const predicted = unlocked > v.withdrawn ? unlocked - v.withdrawn : 0n;
+  const claimableAmt = claimable === undefined ? predicted
+    : (claimable > predicted ? claimable : predicted);
+  const out = { ...v, price: spot, highWater, pct, claimable: claimableAmt };
+  out.art = vaultCard({ id: v.id, symbol: v.symbol, dec: v.dec, deposited: v.deposited,
+    withdrawn: v.withdrawn, low: v.low, high: v.high, highWater,
+    matured: Date.now() / 1000 >= Number(v.createdAt) + 700 * 86400 });
+  return out;
+}
+
+const mktBtn = (label, cls) => CONFIG.MARKET
+  ? `<a class="${cls}" href="${CONFIG.MARKET}" target="_blank" rel="noopener">${esc(label)}</a>`
+  : `<span class="${cls} dim" aria-disabled="true">${esc(label)} \u00b7 ${esc(t("link.soon"))}</span>`;
+
+/* ================================================================== wallet */
+async function ensureAllowance(tokenAddr, amount, label){
+  const erc = new ethers.Contract(tokenAddr, ERC20_ABI, signer);
+  if (await erc.allowance(account, CONFIG.VAULT) >= amount) return;
+  say(t("msg.approving", { s: label }));
+  await (await erc.approve(CONFIG.VAULT, amount)).wait();
+}
+async function connect(){
+  if (!window.ethereum) return say(t("msg.noWallet"), true);
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+
+    // switch the wallet first, then build the provider. Ethers pins the network
+    // at construction, so a chain switch underneath it throws "network changed".
+    const current = await window.ethereum.request({ method: "eth_chainId" });
+    if (current !== CONFIG.CHAIN.chainId){
+      try { await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{chainId:CONFIG.CHAIN.chainId}] }); }
+      catch (e){
+        if (e.code === 4902 || e?.data?.originalError?.code === 4902)
+          await window.ethereum.request({ method:"wallet_addEthereumChain", params:[CONFIG.CHAIN] });
+        else throw e;
+      }
+      await new Promise(r => setTimeout(r, 400));   // let the wallet settle
+    }
+
+    provider = new ethers.BrowserProvider(window.ethereum, {
+      chainId: parseInt(CONFIG.CHAIN.chainId, 16),
+      name: CONFIG.CHAIN.chainName
+    });
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    if (CONFIG.VAULT){
+      vault = new ethers.Contract(CONFIG.VAULT, VAULT_ABI, signer);
+      try { feeAmount = await vault.creationFee(); paperhandAddr = await vault.paperhand(); } catch {}
+    }
+    $("connect").textContent = short(account);
+    say(t("msg.connected"));
+    if (view === "guide") renderGuide();
+    await refresh();
+  } catch (e){ say(reason(e), true); }
+}
+
+/* ==================================================================== lock */
+function currentToken(){ return CONFIG.TOKENS[$("token").selectedIndex] || CONFIG.TOKENS[0]; }
+
+async function refreshSpot(){
+  const tk = currentToken();
+  $("token-mark").innerHTML = markHTML(tk.symbol, 26);
+  spotPrice = await api.spot(tk.symbol);
+  $("cur-price").textContent = spotPrice == null ? t("assets.down") : usd(spotPrice);
+  drawBar(); drawAmountUsd(); drawPreview(); refreshBalance();
+}
+let nextIdCache = null;
+async function nextVaultId(){
+  if (testMode) return BigInt(testNextId);
+  if (nextIdCache != null) return nextIdCache;
+  try {
+    const c = vault || new ethers.Contract(CONFIG.VAULT, VAULT_ABI, ethersReader());
+    nextIdCache = await c.nextVaultId();
+  } catch { nextIdCache = 1n; }
+  return nextIdCache;
+}
+async function drawPreview(){
+  const tk = currentToken();
+  let amount = 0n;
+  try { const a = $("amount").value.trim(); if (a && Number(a) > 0) amount = ethers.parseUnits(a, tk.decimals); } catch {}
+  const low = toWad($("low").value) || toWad("0.01");
+  let high = toWad($("high").value);
+  if (!high || high <= low) high = low + WAD;
+  const id = await nextVaultId();
+  $("preview").innerHTML = vaultCard({ id, symbol: tk.symbol, dec: tk.decimals, deposited: amount,
+    low, high, highWater: spotPrice ?? 0n });
+}
+/* What the position is worth now, and what it is worth if the price finishes
+   the range. The vault never changes the token count, so the whole upside is
+   the climb itself. */
+function upside(v){
+  if (v.price == null) return null;
+  const left = v.deposited - v.withdrawn;
+  if (left === 0n) return null;
+  const px = fromWad(v.price);
+  const stillLocked = left - v.claimable;
+  const penalty = stillLocked * BigInt(agentPenalty(v)) / 10000n;
+  const now = fromWad(left) * px;                       // the tokens at today's price
+  const liquid = fromWad(left - penalty) * px;          // what walking away today actually pays
+  const full = fromWad(left) * fromWad(v.high);         // every token at the top of the range
+  const floor = fromWad(left) * fromWad(v.low);
+  return {
+    now, liquid, full, floor, left,
+    gain: full - now,
+    pct: now > 0 ? (full / now - 1) * 100 : 0,          // the climb the range still asks for
+    vsExit: liquid > 0 ? (full / liquid - 1) * 100 : 0, // measured against closing today
+    cost: now - liquid                                  // what leaving early would cost
+  };
+}
+
+function drawAmountUsd(){
+  const a = Number($("amount").value);
+  $("amount-usd").textContent = (!a || spotPrice == null) ? ""
+    : "$" + (a * fromWad(spotPrice)).toLocaleString(locale(), { maximumFractionDigits: 2 });
+}
+function drawBar(){
+  const low = toWad($("low").value), high = toWad($("high").value);
+  const pct = pctOf(low, high, spotPrice);
+  $("fill").style.width = (pct ?? 0) + "%";
+  if (low == null || high == null || high <= low){
+    $("bar-left").textContent = t("form.setRange"); $("bar-right").textContent = ""; return;
+  }
+  $("bar-left").innerHTML = "<b>" + usd(low) + "</b> to <b>" + usd(high) + "</b>";
+  $("bar-right").textContent = pct == null ? "" : (pct === 0 ? t("form.aboveSpot") : t("form.unlocked", { p: pct.toFixed(0) }));
+}
+
+async function doLock(){
+  const tk = currentToken();
+  const amountStr = $("amount").value.trim();
+  const low = toWad($("low").value), high = toWad($("high").value);
+  if (!amountStr || Number(amountStr) <= 0) return say(t("msg.needAmount"), true);
+  if (low == null || high == null) return say(t("msg.needRange"), true);
+  if (high <= low) return say(t("msg.badRange"), true);
+  if (spotPrice != null && low < spotPrice) return say(t("msg.belowSpot", { p: usd(spotPrice) }), true);
+  if (!testMode && !CONFIG.VAULT) return say(t("msg.notDeployed"), true);
+  if (!testMode && !account) return connect();
+
+  const amount = ethers.parseUnits(amountStr, tk.decimals);
+  try {
+    $("lock").disabled = true;
+    const id = await api.create(tk.symbol, amount, low, high);
+    nextIdCache = null;
+    say(id ? t("msg.locked", { id }) : t("msg.lockedLive"));
+    $("amount").value = ""; drawAmountUsd();
+    await refresh();
+    showView("portfolio");
+  } catch (e){ say(reason(e), true); }
+  finally { $("lock").disabled = false; }
+}
+
+/* =============================================================== portfolio */
+function renderPortfolio(){
+  const body = $("portfolio-body");
+  $("vault-count").textContent = vaults.length ? t("portfolio.count", { n: vaults.length }) : "";
+
+  if (selected){
+    const v = vaults.find(x => x.id === selected);
+    if (!v){ selected = null; return renderPortfolio(); }
+    const stillLocked = v.deposited - v.withdrawn - v.claimable;
+    const rate = agentPenalty(v);
+    const penalty = stillLocked * BigInt(rate) / 10000n;
+    const returned = v.claimable + stillLocked - penalty;
+    const up = upside(v);
+    body.innerHTML = `
+      <div class="detail">
+        <div class="side">
+          <div class="art big">${v.art}</div>
+          ${up ? `<div class="upside">
+            <div class="head">
+              <span class="big">${esc((up.pct >= 0 ? "+" : "") + up.pct.toFixed(2) + "%")}</span>
+              <span class="to">${esc(t("nft.up.to", { p: usd(v.high) }))}</span>
+            </div>
+            <div class="kv"><span>${esc(t("pnl.now"))}</span><b>${esc(usd3(up.now))}</b></div>
+            <div class="kv"><span>${esc(t("pnl.full"))}</span><b>${esc(usd3(up.full))}</b></div>
+            ${up.cost > 0.0005 ? `<div class="kv"><span>${esc(t("nft.up.vs"))}</span><b class="up">${esc((up.vsExit >= 0 ? "+" : "") + up.vsExit.toFixed(2) + "%")}</b></div>` : ""}
+            <button class="btn sm pnlbtn" id="pnl-card"><span>${esc(t("nft.up.card"))}</span></button>
+          </div>` : ""}
+        </div>
+        <div>
+          <button class="back" id="back">${esc(t("portfolio.back"))}</button>
+          <h2 style="margin:6px 0 8px">${esc(t("nft.title", { id: v.id }))}</h2>
+          <div class="acts">
+            ${(() => {
+              // everything left is claimable: the vault is spent by this claim and its NFT burns
+              const all = v.claimable > 0n && v.claimable >= v.deposited - v.withdrawn;
+              if (v.claimable === 0n)
+                return `<button class="btn claim" id="do-claim" disabled><span class="l1">${esc(t("nft.claimNone"))}</span></button>`;
+              return `<button class="btn claim${all ? " all" : ""}" id="do-claim">
+                <span class="l1">${esc(t(all ? "nft.claimAll" : "nft.claim", { a: qty(v.claimable, v.dec), s: v.symbol }))}</span>
+                <span class="l2">${esc(all ? t("nft.claimAllSub") : t("nft.claimSub", { pct: v.pct.toFixed(0) }))}</span>
+              </button>`;
+            })()}
+            <button class="btn ghost" id="do-send">${esc(t("nft.send"))}</button>
+            <button class="btn danger" id="do-exit">${esc(t("nft.exit"))}</button>
+          </div>
+          <p class="hint top">${esc(v.claimable > 0n ? "" : t("nft.claimHint"))}
+            ${esc(t("nft.exitHint", { r: qty(returned, v.dec), p: qty(penalty, v.dec), s: v.symbol, rate: bpsPct(rate) }))}</p>
+          <div class="send" id="send-box" hidden>
+            <label for="send-to" style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px">${esc(t("nft.sendTo"))}</label>
+            <input id="send-to" placeholder="0x" spellcheck="false" />
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn sm" id="send-go">${esc(t("nft.sendBtn"))}</button>
+              <button class="btn sm ghost" id="send-cancel">${esc(t("nft.cancel"))}</button>
+            </div>
+            <p class="hint">${esc(t("nft.sendWarn"))}</p>
+          </div>
+          <div class="rows">
+            ${[[t("nft.inside"), qty(v.deposited - v.withdrawn, v.dec) + " " + v.symbol],
+               [t("nft.deposited"), qty(v.deposited, v.dec) + " " + v.symbol],
+               [t("nft.claimed"), qty(v.withdrawn, v.dec) + " " + v.symbol],
+               [t("nft.range"), usd(v.low) + " to " + usd(v.high)],
+               [t("nft.unlocked"), v.pct.toFixed(0) + "%"],
+               [t("nft.ready"), qty(v.claimable, v.dec) + " " + v.symbol],
+               [t("nft.priceNow"), v.price == null ? t("assets.down") : usd(v.price)],
+               [t("nft.highWater"), usd(v.highWater)],
+               [t("nft.worth"), v.price == null ? t("assets.down") : usd3(fromWad(v.deposited - v.withdrawn) * fromWad(v.price))],
+               [t("nft.atFull"), up ? usd3(up.full) : t("assets.down")],
+               [t("nft.upside"), up ? (up.pct >= 0 ? "+" : "") + up.pct.toFixed(2) + "%" : t("assets.down")],
+               [t("nft.penalty"), bpsPct(rate)],
+               [t("nft.opened"), day(v.createdAt)],
+               [t("nft.matures"), day(Number(v.createdAt) + 700 * 86400)]]
+              .map(([k, val]) => `<div class="kv"><span>${esc(k)}</span><b>${esc(val)}</b></div>`).join("")}
+          </div>
+        </div>
+      </div>
+      ${penalty > 0n && v.price != null ? (() => {
+        const px = fromWad(v.price);
+        const floor = fromWad(returned) * px, full = fromWad(v.deposited - v.withdrawn) * px;
+        return `<div class="sellbar">
+          <div class="txt">
+            <b>${esc(t("nft.sell.h"))}</b>
+            <span>${esc(t("nft.sell.p", { floor: usd3(floor), cut: usd3(full - floor) }))}</span>
+          </div>
+          ${mktBtn(t("nft.sell.cta"), "btn sm")}
+        </div>`; })() : ""}`;
+    $("back").onclick = () => { selected = null; renderPortfolio(); };
+    if ($("pnl-card")) $("pnl-card").onclick = () => openPnlCard(v, up);
+    $("do-claim").onclick = async () => {
+      try { const a = await api.claim(v.id); say(t("msg.claimed", { a: qty(a, v.dec), s: v.symbol })); selected = null; await refresh(); }
+      catch (e){ say(reason(e), true); }
+    };
+    $("do-exit").onclick = async () => {
+      const yes = await ask({
+        title: t("nft.confirmExit"),
+        body: t("nft.exitHint", { r: qty(returned, v.dec), p: qty(penalty, v.dec), s: v.symbol, rate: bpsPct(rate) }),
+        ok: t("nft.exitNow", { rate: bpsPct(rate) }), danger: true
+      });
+      if (!yes) return;
+      try { const r = await api.exit(v.id); say(t("msg.closed", { a: qty(r.returned, v.dec), p: qty(r.penalty, v.dec), s: v.symbol })); selected = null; await refresh(); }
+      catch (e){ say(reason(e), true); }
+    };
+    $("do-send").onclick = () => { $("send-box").hidden = false; $("send-to").focus(); };
+    $("send-cancel").onclick = () => { $("send-box").hidden = true; };
+    $("send-go").onclick = async () => {
+      const to = $("send-to").value.trim();
+      if (!ethers.isAddress(to)) return say(t("msg.badAddress"), true);
+      try { await api.send(v.id, to); say(t("msg.sent", { a: short(to) })); selected = null; await refresh(); }
+      catch (e){ say(reason(e), true); }
+    };
+    return;
+  }
+
+  if (!vaults.length){
+    body.innerHTML = `<div class="empty">${esc(
+      testMode ? t("portfolio.empty")
+      : !CONFIG.VAULT ? t("msg.notDeployed")
+      : !account ? t("portfolio.connect") : t("portfolio.empty"))}</div>`;
+    return;
+  }
+  body.innerHTML = `<div class="nfts">${vaults.map(v => `
+    <button class="nft" data-id="${v.id}">
+      <span class="art">${v.art}</span>
+      <div class="cap"><b>${esc(qty(v.deposited - v.withdrawn, v.dec))} ${esc(v.symbol)}</b><span>${v.pct.toFixed(0)}%</span></div>
+    </button>`).join("")}</div>`;
+  body.querySelectorAll("[data-id]").forEach(b => b.onclick = () => { selected = b.dataset.id; renderPortfolio(); });
+}
+
+/* ================================================================== assets */
+async function renderAssets(){
+  $("assets-note").textContent = t("assets.live");
+  if (!testMode) await loadFeeds(true);
+  const rows = [];
+  for (const tk of CONFIG.TOKENS){
+    const f = testMode ? { price: testPrices[tk.symbol], updatedAt: 0, paused: false }
+                       : (await readFeed(tk)) || { price: null };
+    const mine = vaults.filter(v => v.symbol === tk.symbol);
+    rows.push({ tk, f, mine: mine.reduce((a, v) => a + (v.deposited - v.withdrawn), 0n) });
+  }
+  const live = oracle.state === "ok";
+  const diag = testMode ? "" : `
+    <div class="diag ${live ? "ok" : "warn"}">
+      <div class="line">
+        <b>${esc(live ? t("rpc.ok") : t("rpc.snap", { d: CONFIG.SNAPSHOT_AT }))}</b>
+        <span>${esc(live ? currentRpc() : t("rpc." + oracle.state))}</span>
+      </div>
+      <div class="rpcrow">
+        <input id="rpc-input" value="${esc(currentRpc() || "")}" spellcheck="false" placeholder="https://" />
+        <button class="btn sm ghost" id="rpc-save">${esc(t("rpc.use"))}</button>
+        <button class="btn sm ghost" id="rpc-reset">${esc(t("rpc.reset"))}</button>
+      </div>
+      ${live ? "" : `<p class="why">${esc(t("rpc.why"))}</p>`}
+    </div>`;
+
+  $("assets-body").innerHTML = diag + `
+    <table>
+      <thead><tr>
+        <th>${esc(t("assets.col.asset"))}</th>
+        <th class="num">${esc(t("assets.col.price"))}</th>
+        <th class="num hide-sm">${esc(t("assets.col.status"))}</th>
+        <th class="num">${esc(t("assets.col.locked"))}</th>
+        <th class="num"></th>
+      </tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td><div class="asset"><span class="tile">${markHTML(r.tk.symbol)}</span>
+            <div>
+              <div style="font-weight:600">${esc(r.tk.symbol)}</div>
+              <div class="links">${r.tk.address
+                ? `<a href="${explorer.token(r.tk.address)}" target="_blank" rel="noopener">${esc(t("assets.token"))}</a>`
+                : `<span class="sub">${esc(t("assets.testToken"))}</span>`}</div>
+            </div></div></td>
+          <td class="num">${testMode ? `
+            <span class="nudge">
+              <button data-down="${r.tk.symbol}" aria-label="lower">\u2193</button>
+              <input data-price="${r.tk.symbol}" value="${r.f.price == null ? "" : fromWad(r.f.price).toFixed(pxDigits(fromWad(r.f.price)))}" inputmode="decimal" />
+              <button data-up="${r.tk.symbol}" aria-label="raise">\u2191</button>
+            </span>` : `<b>${esc(usd(r.f.price) || t("assets.down"))}</b>
+              <div class="sub">${esc(r.f.snapshot ? t("rpc.snapTag") : ago(r.f.updatedAt))}</div>`}</td>
+          <td class="num hide-sm"><span class="tag ${r.f.price == null ? "off" : (r.f.paused ? "warn" : "")}">${
+            esc(r.f.price == null ? t("assets.down") : (r.f.paused ? t("assets.paused") : t("assets.ok")))}</span></td>
+          <td class="num">${r.mine > 0n ? esc(qty(r.mine) + " " + r.tk.symbol) : ""}</td>
+          <td class="num">${r.tk.trade ? `<a class="buy" href="${r.tk.trade}" target="_blank" rel="noopener">${esc(t("assets.comfy"))}</a>` : ""}</td>
+        </tr>`).join("")}</tbody>
+    </table>
+    <p class="note">${esc(t("assets.real"))}</p>`;
+
+  if (!testMode){
+    const save = $("rpc-save"), reset = $("rpc-reset");
+    if (save) save.onclick = () => { setRpc($("rpc-input").value.trim()); refresh(); };
+    if (reset) reset.onclick = () => { setRpc(null); refresh(); };
+    return;
+  }
+  const bump = (sym, mult) => setPrice(sym, testPrices[sym] * BigInt(Math.round(mult * 1000)) / 1000n);
+  $("assets-body").querySelectorAll("[data-up]").forEach(b => b.onclick = () => bump(b.dataset.up, 1.05));
+  $("assets-body").querySelectorAll("[data-down]").forEach(b => b.onclick = () => bump(b.dataset.down, 0.95));
+  $("assets-body").querySelectorAll("[data-price]").forEach(inp => inp.onchange = () => {
+    const v = toWad(inp.value); if (v && v > 0n) setPrice(inp.dataset.price, v);
+  });
+}
+async function setPrice(sym, price){
+  testPrices[sym] = price;
+  for (const v of testVaults) if (v.symbol === sym && price > v.highWater) v.highWater = price; // the ratchet
+  saveTestState();
+  await refresh();
+}
+
+/* =================================================================== token */
+async function renderToken(){
+  const st = await api.stats();
+  const vaultUrl = CONFIG.VAULT ? explorer.address(CONFIG.VAULT) : "";
+  const tresUrl = CONFIG.TREASURY ? explorer.address(CONFIG.TREASURY) : "";
+  const tokUrl = CONFIG.PAPERHAND ? explorer.token(CONFIG.PAPERHAND) : "";
+  const n = x => x == null ? t("token.tba") : x.toLocaleString(locale());
+  const link = (url, label, sub) => url
+    ? `<a class="addr" href="${url}" target="_blank" rel="noopener"><b>${esc(label)}</b><span>${esc(sub)}</span></a>`
+    : `<span class="addr soon"><b>${esc(label)}</b><span>${esc(t("token.tba"))}</span></span>`;
+
+  $("token-body").innerHTML = `
+    <div class="stats">
+      <div class="stat"><span>${esc(t("token.tvl"))}</span><b>${esc(usd3(st.tvl))}</b></div>
+      <div class="stat"><span>${esc(t("token.treasury"))}</span><b>${esc(usd3(st.treasury))}</b></div>
+      <div class="stat"><span>${esc(t("token.vaults"))}</span><b>${esc(n(st.open))}</b></div>
+      <div class="stat"><span>${esc(t("token.closed"))}</span><b>${esc(n(st.closed))}</b></div>
+    </div>
+    <div class="stats">
+      <div class="stat tba"><span>${esc(t("token.price"))}</span><b>${esc(t("token.tba"))}</b></div>
+      <div class="stat tba"><span>${esc(t("token.supply"))}</span><b>${esc(t("token.tba"))}</b></div>
+      <div class="stat"><span>${esc(t("token.fees"))}</span><b>${esc(t("token.feesVal", { b: CONFIG.FEES.trade, s: CONFIG.FEES.agent }))}</b></div>
+      <div class="stat"><span>${esc(t("token.burned"))}</span><b>${esc(st.burned == null ? t("token.tba") : n(st.burned))}</b></div>
+    </div>
+
+    <div class="block">
+      <h3>${esc(t("token.where"))}</h3>
+      <div class="addrs">
+        ${link(vaultUrl, t("token.addr.vault"), CONFIG.VAULT ? short(CONFIG.VAULT) + " \u00b7 " + t("token.addr.vaultSub") : "")}
+        ${link(tresUrl, t("token.addr.treasury"), CONFIG.TREASURY ? short(CONFIG.TREASURY) + " \u00b7 " + t("token.addr.treasurySub") : "")}
+        ${link(tokUrl, "$PAPERHAND", CONFIG.PAPERHAND ? short(CONFIG.PAPERHAND) : "")}
+      </div>
+    </div>
+
+    <div class="block" style="padding-top:0">
+      <h3>${esc(t("token.h2"))}</h3>
+      <table class="mini">
+        <thead><tr><th>${esc(t("assets.col.asset"))}</th><th class="num">${esc(t("token.inVault"))}</th><th class="num">${esc(t("token.inTreasury"))}</th></tr></thead>
+        <tbody>${st.perAsset.map(r => {
+          const p = r.price == null ? 0 : fromWad(r.price);
+          return `<tr>
+            <td><div class="asset"><span class="tile">${markHTML(r.tk.symbol, 26)}</span><b>${esc(r.tk.symbol)}</b></div></td>
+            <td class="num">${r.locked == null ? `<span class="sub">${esc(t("token.notLockable"))}</span>`
+              : `${esc(qty(r.locked))}<div class="sub">${esc(usd3(fromWad(r.locked) * p))}</div>`}</td>
+            <td class="num">${esc(qty(r.cut))}<div class="sub">${esc(usd3(fromWad(r.cut) * p))}</div></td>
+          </tr>`; }).join("")}</tbody>
+      </table>
+    </div>
+
+    <div class="block" style="padding-top:0">
+      <h3>${esc(t("token.fund.h"))}</h3>
+      <div class="sources">
+        <div><b>${esc(CONFIG.FEES.agent + "%")}</b><span>${esc(t("token.fund.fees"))}</span></div>
+        <div><b>${esc(t("token.fund.agentB"))}</b><span>${esc(t("token.fund.penalty"))}</span></div>
+        <div><b>${esc(t("token.fund.gainsB"))}</b><span>${esc(t("token.fund.royalty"))}</span></div>
+      </div>
+    </div>
+
+    <div class="block market" style="padding-top:0">
+      <h3>${esc(t("token.mkt.h"))}</h3>
+      <p>${esc(t("token.mkt.p1"))}</p>
+      <p>${esc(t("token.mkt.p2"))}</p>
+      ${mktBtn(t("token.mkt.cta"), "btn")}
+    </div>
+
+    <div class="block">
+      <h3>${esc(t("token.h1"))}</h3>
+      <p style="color:var(--muted);font-size:13.5px;max-width:70ch">${esc(t("token.p1"))}</p>
+    </div>
+    <p class="note">${esc(t("token.note"))}</p>`;
+}
+
+/* ==================================================================== docs */
+function renderDocs(){
+  const blocks = ["agent","range","ratchet","exit","treasury","mature","price","custody","nft","cost"];
+  const links = ["site","comfy","contract","paperhand","x","telegram"];
+  const faqs = Array.from({ length: 12 }, (_, i) => i + 1);
+  const art = b => `<article><h3>${esc(t("docs." + b + ".h"))}</h3><p>${esc(t("docs." + b + ".p"))}</p></article>`;
+  $("docs-body").innerHTML = `<div class="docs">
+    <article class="wide lead"><h3>${esc(t("docs.idea.h"))}</h3><p>${esc(t("docs.idea.p"))}</p></article>
+    <article class="wide"><h3>${esc(t("docs.example.h"))}</h3><p>${esc(t("docs.example.p"))}</p></article>
+    ${blocks.map(art).join("")}
+    <article class="wide mkt">
+      <h3>${esc(t("docs.market.h"))}</h3><p>${esc(t("docs.market.p"))}</p>
+      ${mktBtn(t("token.mkt.cta"), "btn sm")}
+    </article>
+    <article class="wide faqs">
+      <h3>${esc(t("docs.faq.h"))}</h3>
+      ${faqs.map(n => `<details><summary>${esc(t("faq." + n + ".q"))}</summary><p>${esc(t("faq." + n + ".a"))}</p></details>`).join("")}
+    </article>
+    <article class="wide">
+      <h3>${esc(t("docs.links.h"))}</h3>
+      <p>${esc(t("docs.links.p"))}</p>
+      <div class="linkrow">
+        ${links.map(k => `<a class="linkchip" data-link="${k}">${esc(t("link." + k))}
+          <span class="soon-tag">${esc(t("link.soon"))}</span></a>`).join("")}
+      </div>
+    </article>
+  </div>`;
+  applyLinks($("docs-body"));
+}
+
+/* =================================================================== guide
+   The test tutorial. Numbered, because it is a sequence. */
+async function addChain(){
+  if (!window.ethereum) return say(t("msg.noWallet"), true);
+  try {
+    await window.ethereum.request({ method: "wallet_addEthereumChain", params: [CONFIG.CHAIN] });
+    say(t("msg.chainAdded"));
+  } catch (e){ say(reason(e), true); }
+  drawChain();
+}
+async function drawChain(){
+  const el = $("guide-chain"); if (!el) return;
+  let id = null;
+  try { if (window.ethereum) id = await window.ethereum.request({ method: "eth_chainId" }); } catch {}
+  const on = !!account && id === CONFIG.CHAIN.chainId;
+  el.classList.toggle("on", on);
+  el.innerHTML = '<i class="dot"></i>' + esc(on ? t("guide.onChain") : account ? t("guide.wrongChain") : t("guide.noWallet"));
+}
+function resetTest(){
+  try { localStorage.removeItem("ph-test-state"); } catch {}
+  loadTestState(); nextIdCache = null; selected = null;
+  say(t("msg.reset"));
+  refresh();
+}
+function renderGuide(){
+  const step = (n, extra = "") => `<li><div><b>${esc(t("guide." + n + ".h"))}</b><p>${esc(t("guide." + n + ".p"))}</p>${extra}</div></li>`;
+  $("guide-body").innerHTML = `<div class="guide">
+    <ol>
+      ${step(1, `<div class="row">
+          <button class="btn sm" id="g-connect">${esc(account ? short(account) : t("wallet.connect"))}</button>
+          <button class="btn sm ghost" id="g-chain">${esc(t("guide.addChain"))}</button>
+        </div>
+        <p class="chain">${esc(t("guide.chainInfo"))} <code>0G Mainnet</code> \u00b7 <code>16661</code> \u00b7 <code>${esc(CONFIG.RPC)}</code></p>`)}
+      ${step(2, `<div class="row"><button class="btn sm" id="g-lock">${esc(t("guide.goLock"))}</button></div>`)}
+      ${step(3, `<div class="row"><button class="btn sm ghost" id="g-assets">${esc(t("guide.goAssets"))}</button></div>`)}
+      ${step(4, `<div class="row"><button class="btn sm ghost" id="g-port">${esc(t("guide.goPortfolio"))}</button></div>`)}
+      ${step(5, `<div class="row"><button class="btn sm ghost" id="g-reset">${esc(t("test.reset"))}</button></div>`)}
+    </ol>
+    <div class="soon"><b>${esc(t("guide.soon.h"))}</b><p>${esc(t("guide.soon.p"))}</p></div>
+  </div>`;
+  $("g-connect").onclick = connect;
+  $("g-chain").onclick = addChain;
+  $("g-lock").onclick = () => showView("lock");
+  $("g-assets").onclick = () => showView("assets");
+  $("g-port").onclick = () => showView("portfolio");
+  $("g-reset").onclick = resetTest;
+  drawChain();
+}
+
+/* =================================================================== views */
+function showView(name){
+  view = name; selected = null;
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "view-" + name));
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.view === name));
+  $("card").classList.toggle("wide", name !== "lock");
+  $("headline").hidden = name !== "lock";
+  if (name === "docs") return renderDocs();
+  if (name === "guide") return renderGuide();
+  // draw what we already have, then go and get the current numbers
+  if (name === "portfolio") renderPortfolio();
+  if (name === "assets") renderAssets();
+  if (name === "token") renderToken();
+  refresh();
+}
+function setTestMode(){
+  $("connect").style.display = "";
+  feedCache.clear();
+  refresh();
+}
+async function refresh(){
+  try { vaults = await api.list(); } catch { vaults = []; }
+  await refreshSpot();
+  if (view === "portfolio") renderPortfolio();
+  if (view === "assets") renderAssets();
+  if (view === "token") renderToken();
+}
+
+/* ==================================================================== lang */
+function applyLang(){
+  document.documentElement.lang = lang === "zh" ? "zh-Hans" : "en";
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = t(el.dataset.t));
+  document.querySelectorAll("[data-t-title]").forEach(el => el.title = t(el.dataset.tTitle));
+  document.querySelectorAll("#lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  if (account) $("connect").textContent = short(account);
+  drawBar(); drawAmountUsd();
+  if (view === "portfolio") renderPortfolio();
+  if (view === "assets") renderAssets();
+  if (view === "token") renderToken();
+  if (view === "docs") renderDocs();
+  if (view === "guide") renderGuide();
+  document.querySelectorAll("[data-t-html]").forEach(el => el.innerHTML = t(el.dataset.tHtml));
+  if (testMode) $("fee").textContent = t("form.costTest");
+}
+
+/* ==================================================================== boot */
+$("token").innerHTML = CONFIG.TOKENS.map(x => `<option>${x.symbol}</option>`).join("");
+$("token").onchange = refreshSpot;
+$("amount").addEventListener("input", () => { markPct(null); drawAmountUsd(); drawPreview(); });
+["low","high"].forEach(id => $(id).addEventListener("input", () => { drawBar(); drawPreview(); }));
+$("preview").onclick = () => {
+  const z = document.createElement("div");
+  z.className = "zoom";
+  z.innerHTML = '<div class="inner">' + $("preview").innerHTML + "</div><p>" + esc(t("form.previewNote")) + "</p>";
+  z.onclick = () => z.remove();
+  document.body.appendChild(z);
+};
+let balance = null;      // exact, in the token's own units
+
+async function refreshBalance(){
+  const tk = currentToken();
+  balance = null;
+  if (testMode) balance = testBalances[tk.symbol] ?? 0n;
+  else if (account && CONFIG.VAULT){
+    try {
+      const erc = new ethers.Contract(tk.address, ERC20_ABI, provider || ethersReader());
+      balance = await erc.balanceOf(account);
+    } catch {}
+  }
+  $("bal").textContent = balance == null ? "\u2014" : ethers.formatUnits(balance, tk.decimals) + " " + tk.symbol;
+  $("bal").title = $("bal").textContent;
+}
+
+$("pcts").onclick = e => {
+  const b = e.target.closest("[data-pct]"); if (!b) return;
+  if (!testMode && !account) return say(t("msg.connectFirst"));
+  if (balance == null || balance === 0n) return say(t("msg.noBalance"));
+  const tk = currentToken();
+  const part = (balance * BigInt(b.dataset.pct)) / 100n;
+  $("amount").value = ethers.formatUnits(part, tk.decimals);
+  markPct(b.dataset.pct);
+  drawAmountUsd(); drawPreview();
+};
+function markPct(pct){
+  $("pcts").querySelectorAll("[data-pct]").forEach(x =>
+    x.setAttribute("aria-pressed", String(pct != null && x.dataset.pct === String(pct))));
+}
+$("bal").onclick = () => $("pcts").querySelector('[data-pct="100"]').click();
+$("lock").onclick = doLock;
+$("connect").onclick = connect;
+$("tb-guide").onclick = () => showView("guide");
+$("tb-reset").onclick = resetTest;
+if (window.ethereum && window.ethereum.on){
+  window.ethereum.on("chainChanged", () => drawChain());
+  window.ethereum.on("accountsChanged", a => { account = a && a[0] ? a[0] : null;
+    $("connect").textContent = account ? short(account) : t("wallet.connect"); drawChain(); });
+}
+$("tabs").onclick = e => { const b = e.target.closest("[data-view]"); if (b) showView(b.dataset.view); };
+$("lang").onclick = e => {
+  const b = e.target.closest("[data-lang]"); if (!b) return;
+  lang = b.dataset.lang; localStorage.setItem("ph-lang", lang); applyLang();
+};
+/* the logo behaves like liquid: it ripples under the cursor, and a click fills
+   the vault to the brim and lets it settle before leaving for the landing */
+(function(){
+  const logo = document.querySelector(".logo");
+  if (!logo) return;
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const waves = [...logo.querySelectorAll("animate.wave")];
+  if (!still){
+    logo.addEventListener("mouseenter", () => waves.forEach(a => { try { a.beginElement(); } catch {} }));
+    logo.addEventListener("mouseleave", () => waves.forEach(a => { try { a.endElement(); } catch {} }));
+  }
+  logo.addEventListener("click", e => {
+    if (still) return;
+    logo.classList.remove("splash"); void logo.getBoundingClientRect(); logo.classList.add("splash");
+    const href = logo.getAttribute("href");
+    if (href && !href.startsWith("#")){ e.preventDefault(); setTimeout(() => { location.href = href; }, 560); }
+  });
+  logo.addEventListener("animationend", () => logo.classList.remove("splash"));
+})();
+
+/* One dialog, promised based, so a confirmation looks like the rest of the app
+   instead of a browser alert that names the domain. */
+function ask({ title, body, ok, danger }){
+  return new Promise(resolve => {
+    const wrap = document.createElement("div");
+    wrap.className = "ask";
+    wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">
+      <h3></h3><p></p>
+      <div class="row">
+        <button class="btn ghost" data-a="0"></button>
+        <button class="btn ${danger ? "danger" : ""}" data-a="1"></button>
+      </div></div>`;
+    wrap.querySelector("h3").textContent = title;
+    wrap.querySelector("p").textContent = body;
+    wrap.querySelector('[data-a="0"]').textContent = t("ask.cancel");
+    wrap.querySelector('[data-a="1"]').textContent = ok;
+    const done = v => { wrap.classList.add("out"); setTimeout(() => wrap.remove(), 160); resolve(v); };
+    wrap.onclick = e => {
+      const b = e.target.closest("[data-a]");
+      if (b) done(b.dataset.a === "1");
+      else if (e.target === wrap) done(false);
+    };
+    document.addEventListener("keydown", function esc(e){
+      if (!document.body.contains(wrap)) return document.removeEventListener("keydown", esc);
+      if (e.key === "Escape") done(false);
+      if (e.key === "Enter") done(true);
+    });
+    document.body.appendChild(wrap);
+    requestAnimationFrame(() => wrap.querySelector('[data-a="1"]').focus());
+  });
+}
+
+document.addEventListener("pointerdown", e => {
+  const b = e.target.closest(".btn"); if (!b || b.disabled) return;
+  const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height);
+  const i = document.createElement("span");
+  i.className = "ink";
+  i.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d/2}px;top:${e.clientY - r.top - d/2}px`;
+  b.appendChild(i);
+  setTimeout(() => i.remove(), 600);
+});
+
+/* the arrival sweep, once per session */
+(function(){
+  const el = document.getElementById("ph-enter");
+  if (!el) return;
+  let seen = false;
+  try { seen = sessionStorage.getItem("ph-enter") === "1"; } catch {}
+  if (seen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return el.remove();
+  try { sessionStorage.setItem("ph-enter", "1"); } catch {}
+  setTimeout(() => el.remove(), 1500);
+})();
+
+applyLang();
+setTestMode(testMode);
+let firstVisit = true;
+try { firstVisit = !localStorage.getItem("ph-test-state"); } catch {}
+showView(testMode && firstVisit ? "guide" : "lock");
+setInterval(() => { if (!testMode && vault) refresh(); }, 30000);
+</script>
+</body>
+</html>
