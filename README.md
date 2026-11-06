@@ -1,4 +1,4 @@
-# Paperhand on Elysium: the app
+# Paperhand on Elysium: the app !
 
 - `index.html` the app, one self contained file
 - `add.html` add a token: reads it and its feed from the chain, prints the config line and the `setFeed` call
