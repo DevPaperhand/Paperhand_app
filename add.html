@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Add a token · Paperhand</title>
+<meta name="theme-color" content="#06100E" />
+<link rel="icon" href="favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22c%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2226%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3Cg%20clip-path%3D%22url%28%23c%29%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22%2310251F%22%2F%3E%3Cpath%20d%3D%22M0%2064%20L50%2052%20L100%2064%20V100%20H0%20Z%22%20fill%3D%22%232BC79B%22%2F%3E%3Cpath%20d%3D%22M0%2064%20L50%2052%20L100%2064%20L100%2068%20L50%2056%20L0%2068%20Z%22%20fill%3D%22%237CF5D2%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<script src="paperhand.config.js" onerror="void 0"></script>
+<style>
+:root{
+  color-scheme:dark;
+  --paper:#06100E; --panel:#0B1916; --ink:#E9FFF8; --muted:#8AA69D; --rule:#1B2F2A; --soft:#11231F;
+  --free:#7CF5D2; --violet:#B9A6FF; --on-free:#03130E; --alert:#FF7D6E; --warn:#FFC46B;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.55 "Archivo",ui-sans-serif,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
+  background:radial-gradient(1100px 520px at 50% -12%,rgba(124,245,210,.13),transparent 62%),var(--paper)}
+a{color:var(--free)}
+.wrap{max-width:760px;margin:0 auto;padding:28px 16px 60px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.top a.back{color:var(--muted);text-decoration:none;font-size:14px}
+.top a.back:hover{color:var(--ink)}
+.top .grow{flex:1}
+.net{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px 0 9px;border-radius:100px;
+  border:1px solid var(--rule);background:var(--panel);font-size:12.5px;font-weight:600}
+.net i{width:14px;height:14px;border-radius:50%;background:conic-gradient(from 200deg,var(--free),var(--violet),var(--free));
+  box-shadow:0 0 10px rgba(124,245,210,.6)}
+h1{font-size:clamp(26px,4vw,38px);letter-spacing:-.03em;margin:0 0 6px;line-height:1.1}
+.lede{color:var(--muted);margin:0 0 22px;max-width:60ch}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:20px;padding:18px;margin-bottom:14px;
+  box-shadow:0 30px 70px -36px rgba(0,0,0,.85)}
+.card h2{font-size:15px;margin:0 0 12px;letter-spacing:-.01em}
+.card h2 span{color:var(--muted);font-weight:500}
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 4px}
+input{width:100%;font:inherit;color:var(--ink);background:var(--soft);border:1px solid transparent;border-radius:12px;
+  padding:11px 12px;font-variant-numeric:tabular-nums}
+input:focus{outline:none;border-color:var(--free)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;cursor:pointer;border:1px solid var(--rule);background:var(--panel);color:var(--ink);
+  border-radius:100px;padding:10px 18px;font-weight:600;font-size:14px;transition:transform .14s var(--ease),border-color .16s}
+button:hover{transform:translateY(-1px);border-color:var(--ink)}
+button.go{background:var(--free);color:var(--on-free);border-color:var(--free);box-shadow:0 10px 26px -12px rgba(124,245,210,.6)}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.checks{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.checks li{display:flex;gap:10px;align-items:baseline;font-size:13.5px;padding:8px 10px;border-radius:10px;background:var(--soft)}
+.checks li b{flex:none;width:18px;text-align:center}
+.checks li.ok b{color:var(--free)} .checks li.bad b{color:var(--alert)} .checks li.warn b{color:var(--warn)}
+.checks li span{color:var(--muted)} .checks li span em{color:var(--ink);font-style:normal;font-weight:600}
+pre{margin:0;background:#050D0B;border:1px solid var(--rule);border-radius:12px;padding:12px 14px;overflow:auto;
+  font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#CFF7EA;white-space:pre}
+.copy{position:relative}
+.copy button{position:absolute;top:8px;right:8px;padding:5px 11px;font-size:12px}
+.steps{margin:0;padding-left:20px;color:var(--muted);font-size:13.5px}
+.steps li{margin:4px 0}
+.steps b{color:var(--ink)}
+.mark{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.mark svg,.mark img{width:40px;height:40px;border-radius:12px}
+.mark b{font-size:18px}
+.mark span{color:var(--muted);font-size:13px;display:block}
+.status{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:10px 16px;border-radius:100px;font-size:13.5px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:92vw}
+.status.show{opacity:1} .status.bad{background:var(--alert);color:#1A0503}
+@media (max-width:620px){ .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="./">&larr; Back to the app</a>
+    <span class="grow"></span>
+    <span class="net"><i></i><span id="net-name">Elysium</span></span>
+  </div>
+
+  <h1>Add a token</h1>
+  <p class="lede">Paste a token and its price feed. This page reads both from the chain, checks they are usable,
+    then gives you the one line for <code>paperhand.config.js</code> and the one call the vault owner makes.</p>
+
+  <div class="card">
+    <h2>1. The token</h2>
+    <div class="grid">
+      <div class="full"><label for="token">Token address on Elysium</label><input id="token" placeholder="0x..." spellcheck="false" /></div>
+      <div class="full"><label for="feed">USD price feed (AggregatorV3: latestRoundData)</label><input id="feed" placeholder="0x... (leave empty to list it as soon)" spellcheck="false" /></div>
+      <div><label for="tint">Brand colour</label><input id="tint" value="#7CF5D2" /></div>
+      <div><label for="logo">Logo path or URL (optional)</label><input id="logo" placeholder="logos/kntq.png" /></div>
+      <div><label for="stale">Max feed age, seconds</label><input id="stale" value="90000" inputmode="numeric" /></div>
+      <div><label for="rpc">RPC</label><input id="rpc" spellcheck="false" /></div>
+      <div class="full" style="display:flex;gap:8px;align-items:center">
+        <input id="wraps" type="checkbox" style="width:auto" />
+        <label for="wraps" style="margin:0">This is the wrapped native coin (WHYPE): the app wraps HYPE before locking</label>
+      </div>
+    </div>
+    <div class="row"><button class="go" id="check">Read from chain</button></div>
+  </div>
+
+  <div class="card" id="result" hidden>
+    <h2>2. What the chain says</h2>
+    <div class="mark" id="mark"></div>
+    <ul class="checks" id="checks"></ul>
+  </div>
+
+  <div class="card" id="out" hidden>
+    <h2>3. Paste this line <span>into TOKENS, in paperhand.config.js, in both repos</span></h2>
+    <div class="copy"><pre id="line"></pre><button data-copy="line">Copy</button></div>
+
+    <h2 style="margin-top:18px">4. Whitelist it on the vault <span>owner only, one transaction</span></h2>
+    <div class="copy"><pre id="call"></pre><button data-copy="call">Copy</button></div>
+    <ol class="steps" style="margin-top:12px">
+      <li>Remix, <b>Deploy &amp; run</b>, <b>At Address</b> with the vault address, or the explorer's <b>Write contract</b> tab.</li>
+      <li>Call <b>setFeed</b> with the four values above, from the owner wallet.</li>
+      <li>Commit the config line. The token goes from <b>soon</b> to <b>live</b> on the next page load.</li>
+    </ol>
+    <div class="row">
+      <button id="send" disabled>Send setFeed from this wallet</button>
+    </div>
+  </div>
+</div>
+<div class="status" id="status"></div>
+
+<script>
+const P = window.PAPERHAND || {};
+const NET = P.NET || { chainId: 99801, name: "Elysium Testnet", rpc: "https://testnet-rpc.elysium.kinetiq.xyz", explorer: "" };
+const $ = id => document.getElementById(id);
+$("net-name").textContent = NET.name;
+$("rpc").value = NET.rpc || "";
+$("stale").value = String(P.MAX_FEED_AGE || 90000);
+
+const ERC = new ethers.Interface([
+  "function symbol() view returns (string)", "function name() view returns (string)",
+  "function decimals() view returns (uint8)", "function totalSupply() view returns (uint256)"
+]);
+const FEED = new ethers.Interface([
+  "function decimals() view returns (uint8)", "function description() view returns (string)",
+  "function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)"
+]);
+const VAULT = new ethers.Interface([
+  "function setFeed(address token,address aggregator,uint32 maxStaleness,bool enabled)",
+  "function owner() view returns (address)"
+]);
+
+let found = null;
+
+function say(msg, bad){
+  const s = $("status"); s.textContent = msg; s.className = "status show" + (bad ? " bad" : "");
+  clearTimeout(say.t); say.t = setTimeout(() => s.className = "status", 3600);
+}
+async function batch(calls){
+  const body = calls.map((c, i) => ({ jsonrpc: "2.0", id: i, method: "eth_call", params: [c, "latest"] }));
+  const r = await fetch($("rpc").value.trim(), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  const out = new Array(calls.length).fill(null);
+  for (const x of (Array.isArray(j) ? j : [j])) if (x && typeof x.id === "number" && x.result && x.result !== "0x") out[x.id] = x.result;
+  return out;
+}
+const dec = (iface, fn, raw) => { try { return raw ? iface.decodeFunctionResult(fn, raw) : null; } catch { return null; } };
+function mark(sym, tint, logo){
+  if (logo) return '<img src="' + logo + '" alt="" />';
+  const h = tint.replace("#", "");
+  const lum = h.length === 6 ? (0.299*parseInt(h.slice(0,2),16) + 0.587*parseInt(h.slice(2,4),16) + 0.114*parseInt(h.slice(4,6),16)) / 255 : 0;
+  const fs = sym.length <= 3 ? 15 : sym.length === 4 ? 12 : 10;
+  return '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="' + tint + '"/><text x="24" y="' + (24 + fs*0.36) +
+    '" text-anchor="middle" font-family="system-ui,sans-serif" font-size="' + fs + '" font-weight="700" fill="' +
+    (lum > 0.6 ? "#03130E" : "#fff") + '">' + sym.replace(/[<&"]/g, "") + "</text></svg>";
+}
+const li = (cls, icon, html) => '<li class="' + cls + '"><b>' + icon + "</b><span>" + html + "</span></li>";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+$("check").onclick = async () => {
+  const token = $("token").value.trim(), feed = $("feed").value.trim();
+  if (!ethers.isAddress(token)) return say("That token address is not valid.", true);
+  if (feed && !ethers.isAddress(feed)) return say("That feed address is not valid.", true);
+  $("check").disabled = true;
+  try {
+    const calls = [
+      { to: token, data: ERC.encodeFunctionData("symbol") }, { to: token, data: ERC.encodeFunctionData("name") },
+      { to: token, data: ERC.encodeFunctionData("decimals") }
+    ];
+    if (feed) calls.push(
+      { to: feed, data: FEED.encodeFunctionData("decimals") }, { to: feed, data: FEED.encodeFunctionData("description") },
+      { to: feed, data: FEED.encodeFunctionData("latestRoundData") });
+    const r = await batch(calls);
+    const sym = dec(ERC, "symbol", r[0])?.[0], name = dec(ERC, "name", r[1])?.[0], d = dec(ERC, "decimals", r[2])?.[0];
+    const checks = [];
+    checks.push(sym ? li("ok", "✓", "Token <em>" + esc(sym) + "</em>, " + esc(name || "") + ", " + d + " decimals")
+                    : li("bad", "✕", "No ERC-20 at that address on " + esc(NET.name) + "."));
+    if (d != null && Number(d) !== 18) checks.push(li("warn", "!", "Not 18 decimals. The vault handles it, double check the amounts you test with."));
+    let price = null, age = null;
+    if (feed){
+      const fd = dec(FEED, "decimals", r[3])?.[0], desc = dec(FEED, "description", r[4])?.[0], rd = dec(FEED, "latestRoundData", r[5]);
+      if (rd && fd != null){
+        price = Number(rd[1]) / 10 ** Number(fd);
+        age = Math.floor(Date.now() / 1000) - Number(rd[3]);
+        checks.push(li(price > 0 ? "ok" : "bad", price > 0 ? "✓" : "✕",
+          "Feed " + esc(desc || "") + " reads <em>$" + price.toLocaleString("en-US", { maximumFractionDigits: 6 }) + "</em>, " + fd + " decimals"));
+        const max = Number($("stale").value) || 90000;
+        checks.push(li(age <= max ? "ok" : "warn", age <= max ? "✓" : "!",
+          "Last update " + (age < 3600 ? Math.round(age / 60) + " min" : (age / 3600).toFixed(1) + " h") + " ago, max allowed " + (max / 3600).toFixed(1) + " h"));
+      } else checks.push(li("bad", "✕", "That feed does not answer latestRoundData(). The vault cannot use it."));
+    } else checks.push(li("warn", "!", "No feed yet: the token will be listed as <em>soon</em>, visible but not lockable."));
+
+    const symbol = sym || "TOKEN", tint = $("tint").value.trim() || "#7CF5D2", logo = $("logo").value.trim();
+    $("mark").innerHTML = mark(symbol, tint, logo) + "<div><b>" + esc(symbol) + "</b><span>" + esc(name || "") + "</span></div>";
+    $("checks").innerHTML = checks.join("");
+    $("result").hidden = false;
+
+    const parts = [
+      'symbol: ' + JSON.stringify(symbol), 'name: ' + JSON.stringify(name || symbol),
+      'address: "' + ethers.getAddress(token) + '"', 'feed: "' + (feed ? ethers.getAddress(feed) : "") + '"',
+      'tint: ' + JSON.stringify(tint)
+    ];
+    if (d != null && Number(d) !== 18) parts.push("decimals: " + Number(d));
+    if (logo) parts.push("logo: " + JSON.stringify(logo));
+    if ($("wraps").checked) parts.push("wraps: true");
+    $("line").textContent = "{ " + parts.join(", ") + " },";
+
+    found = { token: ethers.getAddress(token), feed: feed ? ethers.getAddress(feed) : null, stale: BigInt(Number($("stale").value) || 90000) };
+    $("call").textContent = feed
+      ? "setFeed(\n  token        " + found.token + ",\n  aggregator   " + found.feed + ",\n  maxStaleness " + found.stale + ",\n  enabled      true\n)"
+      : "Add a feed first. The vault refuses a token it cannot price.";
+    $("send").disabled = !(feed && P.VAULT && window.ethereum);
+    $("send").title = !P.VAULT ? "Set VAULT in paperhand.config.js first" : "";
+    $("out").hidden = false;
+    $("out").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e){
+    say("Could not reach the RPC. Serve this page over http, or try another RPC.", true);
+  } finally { $("check").disabled = false; }
+};
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  navigator.clipboard.writeText($(b.dataset.copy).textContent).then(() => say("Copied"), () => say("Copy failed", true));
+});
+
+$("send").onclick = async () => {
+  if (!found || !found.feed || !P.VAULT) return;
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    const want = "0x" + Number(NET.chainId).toString(16);
+    if ((await window.ethereum.request({ method: "eth_chainId" })) !== want)
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: want }] });
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const vault = new ethers.Contract(P.VAULT, VAULT, signer);
+    const owner = await vault.owner();
+    if (owner.toLowerCase() !== (await signer.getAddress()).toLowerCase()) return say("This wallet is not the vault owner.", true);
+    say("Confirm in your wallet");
+    await (await vault.setFeed(found.token, found.feed, found.stale, true)).wait();
+    say("Whitelisted. Now commit the config line.");
+  } catch (e){ say((e && (e.shortMessage || e.message) || "Failed").slice(0, 120), true); }
+};
+</script>
+</body>
+</html>
